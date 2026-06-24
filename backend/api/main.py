@@ -1,13 +1,15 @@
 """FastAPI application entrypoint.
 
-v1 is stateless: no database, no auth, no sessions. For M0 the app only exposes
-a health endpoint so we can confirm it boots and serves locally. Feature routes
-(pricing, IV, payoff, sensitivities, chain) arrive in later milestones.
+v1 is stateless: no database, no auth, no sessions. The app exposes a health
+check plus the pricing/IV/position/sensitivity routes (see api/routes.py). The
+chain route arrives in M5; CORS for the deployed frontend is wired in M6.
 """
 
 from __future__ import annotations
 
 from fastapi import FastAPI
+
+from api.routes import router
 
 app = FastAPI(
     title="Options Analytics API",
@@ -20,3 +22,6 @@ app = FastAPI(
 def health() -> dict[str, str]:
     """Liveness check. Returns a static status; no dependencies, no state."""
     return {"status": "ok"}
+
+
+app.include_router(router)

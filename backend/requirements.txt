@@ -1,4 +1,7 @@
-# Runtime dependencies (mirrors [project.dependencies] in pyproject.toml).
-# Used by the Railway deploy in M10. Dev/test tooling lives in the `dev` extra.
+# Runtime dependencies. Used by the Railway deploy. Dev/test tooling lives in
+# requirements-dev.txt.
 fastapi>=0.110
 uvicorn[standard]>=0.29
+numpy>=1.26
+scipy>=1.11
+yfinance>=0.2.40

@@ -10,6 +10,11 @@ target-version = "py311"
 # Sensible defaults: pyflakes, pycodestyle, isort, bugbear, pyupgrade.
 select = ["E", "F", "I", "B", "UP"]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's Depends()/Query() in argument defaults is the framework idiom, not
+# the mutable-default bug B008 targets.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
+
 [tool.pytest.ini_options]
 # Tests import the backend packages directly (e.g. `from api.main import app`),
 # so put the backend root on the path.
