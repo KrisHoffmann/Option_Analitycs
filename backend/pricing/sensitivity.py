@@ -14,7 +14,8 @@ from pricing.black_scholes import OptionType, price_and_greeks
 
 # The pricing input being varied. Each name is a keyword of price_and_greeks.
 SensitivityVariable = Literal[
-    "spot", "strike", "time_to_expiry", "risk_free_rate", "volatility"
+    "spot", "strike", "time_to_expiry", "risk_free_rate", "volatility",
+    "dividend_yield",
 ]
 # The output being tracked. Each is an attribute of BlackScholesResult.
 SensitivityMetric = Literal["price", "delta", "gamma", "theta", "vega", "rho"]
@@ -46,6 +47,7 @@ def sensitivity_series(
     variable: SensitivityVariable,
     metric: SensitivityMetric,
     variable_values: Sequence[float],
+    dividend_yield: float = 0.0,
 ) -> list[float]:
     """Evaluate ``metric`` at each value of ``variable``, holding other inputs fixed.
 
@@ -54,6 +56,7 @@ def sensitivity_series(
         variable: which input to sweep.
         metric: which output (price or a Greek) to record.
         variable_values: the values of ``variable`` to evaluate at.
+        dividend_yield: base continuous dividend yield q (decimal), default 0.
 
     Returns:
         The metric values, aligned one-to-one with ``variable_values``.
@@ -64,6 +67,7 @@ def sensitivity_series(
         time_to_expiry=time_to_expiry,
         risk_free_rate=risk_free_rate,
         volatility=volatility,
+        dividend_yield=dividend_yield,
     )
     series: list[float] = []
     for value in variable_values:

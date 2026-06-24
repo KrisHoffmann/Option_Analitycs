@@ -30,6 +30,7 @@ class ContractRequest(BaseModel):
     time_to_expiry: float = Field(ge=0, description="Years to expiry T")
     risk_free_rate: float = Field(description="Annual cont.-comp. rate r (decimal)")
     volatility: float = Field(ge=0, description="Annualized volatility sigma (decimal)")
+    dividend_yield: float = Field(default=0.0, description="Continuous yield q (dec.)")
 
 
 class GreeksResponse(BaseModel):
@@ -104,6 +105,7 @@ class PositionRequest(BaseModel):
     spot: float = Field(gt=0, description="Current underlying; net Greeks here")
     risk_free_rate: float = Field(default=0.0)
     volatility: float = Field(ge=0, description="Flat volatility for current-value")
+    dividend_yield: float = Field(default=0.0, description="Continuous yield q (dec.)")
 
 
 class PositionResponse(BaseModel):
@@ -121,7 +123,8 @@ class PositionResponse(BaseModel):
 class SensitivityRequest(BaseModel):
     contract: ContractRequest
     variable: Literal[
-        "spot", "strike", "time_to_expiry", "risk_free_rate", "volatility"
+        "spot", "strike", "time_to_expiry", "risk_free_rate", "volatility",
+        "dividend_yield",
     ]
     metric: Literal["price", "delta", "gamma", "theta", "vega", "rho"]
     variable_min: float

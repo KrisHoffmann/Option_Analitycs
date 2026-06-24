@@ -58,6 +58,7 @@ export default function GreeksVisualizer() {
   const [spot, setSpot] = useState(100);
   const [timeToExpiry, setTimeToExpiry] = useState(0.5);
   const [volatility, setVolatility] = useState(0.25);
+  const [dividendYield, setDividendYield] = useState(0);
   const [xVar, setXVar] = useState<XVar>("spot");
 
   const [series, setSeries] = useState<Series | null>(null);
@@ -76,6 +77,7 @@ export default function GreeksVisualizer() {
         time_to_expiry: timeToExpiry,
         risk_free_rate: riskFreeRate,
         volatility,
+        dividend_yield: dividendYield,
       };
       const range = X_VARS[xVar];
       const curves = METRICS.map((m) =>
@@ -112,7 +114,8 @@ export default function GreeksVisualizer() {
     return () => {
       if (debounce.current) clearTimeout(debounce.current);
     };
-  }, [optionType, strike, riskFreeRate, spot, timeToExpiry, volatility, xVar]);
+  }, [optionType, strike, riskFreeRate, spot, timeToExpiry, volatility,
+      dividendYield, xVar]);
 
   const markerX =
     xVar === "spot" ? spot : xVar === "time_to_expiry" ? timeToExpiry : volatility;
@@ -163,6 +166,20 @@ export default function GreeksVisualizer() {
                   step={0.005}
                   value={riskFreeRate}
                   onChange={(e) => setRiskFreeRate(Number(e.target.value))}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="g-div">
+                  Dividend yield <span className="unit">(dec.)</span>
+                  <InfoTip k="dividendYield" />
+                </label>
+                <input
+                  id="g-div"
+                  type="number"
+                  min={0}
+                  step={0.005}
+                  value={dividendYield}
+                  onChange={(e) => setDividendYield(Number(e.target.value))}
                 />
               </div>
               <div className="field stat">
@@ -257,6 +274,7 @@ export default function GreeksVisualizer() {
             time_to_expiry: timeToExpiry,
             risk_free_rate: riskFreeRate,
             volatility,
+            dividend_yield: dividendYield,
           }}
         />
       </div>

@@ -117,12 +117,13 @@ def _leg_intrinsic(leg: Leg, terminal_spot: float) -> float:
 
 
 def _leg_model_value(leg: Leg, spot: float, risk_free_rate: float,
-                     volatility: float) -> float:
+                     volatility: float, dividend_yield: float) -> float:
     """Unsigned current (pre-expiry) model value of one leg."""
     if leg.instrument == "underlying":
         return spot
     return price_and_greeks(leg.instrument, spot, leg.strike,
-                            leg.time_to_expiry, risk_free_rate, volatility).price
+                            leg.time_to_expiry, risk_free_rate, volatility,
+                            dividend_yield).price
 
 
 def payoff_at_expiry(position: Position, spot_grid: Sequence[float]) -> list[float]:
@@ -137,15 +138,18 @@ def payoff_at_expiry(position: Position, spot_grid: Sequence[float]) -> list[flo
 
 
 def current_value(position: Position, spot_grid: Sequence[float],
-                  risk_free_rate: float, volatility: float) -> list[float]:
+                  risk_free_rate: float, volatility: float,
+                  dividend_yield: float = 0.0) -> list[float]:
     """Current (pre-expiry) model value of the position over the spot grid.
 
-    Values every leg at a single flat volatility and rate (see assumptions).
+    Values every leg at a single flat volatility, rate, and dividend yield (see
+    assumptions).
     """
     return [
         sum(
             leg.signed_quantity
-            * _leg_model_value(leg, spot, risk_free_rate, volatility)
+            * _leg_model_value(leg, spot, risk_free_rate, volatility,
+                               dividend_yield)
             for leg in position.legs
         )
         for spot in spot_grid
@@ -153,7 +157,7 @@ def current_value(position: Position, spot_grid: Sequence[float],
 
 
 def net_greeks(position: Position, spot: float, risk_free_rate: float,
-               volatility: float) -> NetGreeks:
+               volatility: float, dividend_yield: float = 0.0) -> NetGreeks:
     """Aggregate the five Greeks across all legs at a single spot.
 
     The underlying leg contributes delta = signed quantity and zero to the other
@@ -161,15 +165,16 @@ def net_greeks(position: Position, spot: float, risk_free_rate: float,
     """
     delta = gamma = theta = vega = rho = 0.0
     for leg in position.legs:
-        q = leg.signed_quantity
+        qty = leg.signed_quantity
         if leg.instrument == "underlying":
-            delta += q  # d(spot)/d(spot) = 1; stock has no gamma/theta/vega/rho
+            delta += qty  # d(spot)/d(spot) = 1; stock has no gamma/theta/vega/rho
             continue
         g = price_and_greeks(leg.instrument, spot, leg.strike,
-                             leg.time_to_expiry, risk_free_rate, volatility)
-        delta += q * g.delta
-        gamma += q * g.gamma
-        theta += q * g.theta
-        vega += q * g.vega
-        rho += q * g.rho
+                             leg.time_to_expiry, risk_free_rate, volatility,
+                             dividend_yield)
+        delta += qty * g.delta
+        gamma += qty * g.gamma
+        theta += qty * g.theta
+        vega += qty * g.vega
+        rho += qty * g.rho
     return NetGreeks(delta=delta, gamma=gamma, theta=theta, vega=vega, rho=rho)

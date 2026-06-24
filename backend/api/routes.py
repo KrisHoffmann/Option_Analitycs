@@ -61,7 +61,8 @@ def price_contract(request: ContractRequest) -> PriceResponse:
     try:
         result = price_and_greeks(
             request.option_type, request.spot, request.strike,
-            request.time_to_expiry, request.risk_free_rate, request.volatility)
+            request.time_to_expiry, request.risk_free_rate, request.volatility,
+            request.dividend_yield)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return PriceResponse(
@@ -81,11 +82,13 @@ def price_comparison(request: PriceComparisonRequest) -> PriceComparisonResponse
     c = request.contract
     try:
         bsm = price_and_greeks(c.option_type, c.spot, c.strike,
-                               c.time_to_expiry, c.risk_free_rate, c.volatility)
+                               c.time_to_expiry, c.risk_free_rate, c.volatility,
+                               c.dividend_yield)
         crr_args = (c.option_type, c.spot, c.strike, c.time_to_expiry,
                     c.risk_free_rate, c.volatility)
-        crr_euro = crr_price(*crr_args, steps=request.steps, american=False)
-        crr_amer = crr_price(*crr_args, steps=request.steps, american=True)
+        crr_kwargs = {"steps": request.steps, "dividend_yield": c.dividend_yield}
+        crr_euro = crr_price(*crr_args, american=False, **crr_kwargs)
+        crr_amer = crr_price(*crr_args, american=True, **crr_kwargs)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return PriceComparisonResponse(
@@ -128,9 +131,9 @@ def evaluate_position(request: PositionRequest) -> PositionResponse:
                               request.grid.num_points)
         payoff = payoff_at_expiry(position, spots)
         values = current_value(position, spots, request.risk_free_rate,
-                               request.volatility)
+                               request.volatility, request.dividend_yield)
         net = net_greeks(position, request.spot, request.risk_free_rate,
-                         request.volatility)
+                         request.volatility, request.dividend_yield)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return PositionResponse(
@@ -156,7 +159,7 @@ def greek_sensitivity(request: SensitivityRequest) -> SensitivityResponse:
             contract.time_to_expiry, contract.risk_free_rate,
             contract.volatility,
             variable=request.variable, metric=request.metric,
-            variable_values=values)
+            variable_values=values, dividend_yield=contract.dividend_yield)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return SensitivityResponse(

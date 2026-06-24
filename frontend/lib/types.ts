@@ -15,6 +15,7 @@ export interface ContractRequest {
   time_to_expiry: number; // years
   risk_free_rate: number; // decimal
   volatility: number; // decimal
+  dividend_yield?: number; // decimal; default 0 server-side
 }
 
 export interface Greeks {
@@ -51,6 +52,7 @@ export interface PositionRequest {
   spot: number; // current underlying; net Greeks evaluated here
   risk_free_rate: number;
   volatility: number; // flat vol for current-value curve
+  dividend_yield?: number; // decimal; default 0 server-side
 }
 
 export interface PositionResponse {

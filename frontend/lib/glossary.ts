@@ -72,6 +72,10 @@ export const GLOSSARY = {
     term: "Volatility",
     body: "How much the stock is assumed to move, annualized, as a decimal (0.25 = 25%). It is the single biggest driver of an option's time value — higher volatility means a wider range of outcomes and a more valuable option.",
   },
+  dividendYield: {
+    term: "Dividend yield",
+    body: "The underlying's assumed continuous annual dividend yield q, as a decimal (0.03 = 3%); leave it at 0 for a non-dividend payer. Dividends lower the forward price of the stock, which reduces a call's value and raises a put's.",
+  },
 
   // ---- market quotes ----
   bid: {

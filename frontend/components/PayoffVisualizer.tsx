@@ -20,6 +20,7 @@ export default function PayoffVisualizer() {
   const [spot, setSpot] = useState(100);
   const [riskFreeRate, setRiskFreeRate] = useState(0.04);
   const [volatility, setVolatility] = useState(0.25);
+  const [dividendYield, setDividendYield] = useState(0);
 
   const [data, setData] = useState<PositionResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -42,6 +43,7 @@ export default function PayoffVisualizer() {
         spot,
         risk_free_rate: riskFreeRate,
         volatility,
+        dividend_yield: dividendYield,
       };
       setLoading(true);
       fetchPosition(request)
@@ -61,7 +63,7 @@ export default function PayoffVisualizer() {
     return () => {
       if (debounce.current) clearTimeout(debounce.current);
     };
-  }, [legs, spot, riskFreeRate, volatility]);
+  }, [legs, spot, riskFreeRate, volatility, dividendYield]);
 
   const strikes = optionStrikes(legs);
 
@@ -118,10 +120,25 @@ export default function PayoffVisualizer() {
                   onChange={(e) => setVolatility(Number(e.target.value))}
                 />
               </div>
+              <div className="field">
+                <label htmlFor="div">
+                  Dividend yield <span className="unit">(decimal)</span>
+                  <InfoTip k="dividendYield" />
+                </label>
+                <input
+                  id="div"
+                  type="number"
+                  min={0}
+                  step={0.005}
+                  value={dividendYield}
+                  onChange={(e) => setDividendYield(Number(e.target.value))}
+                />
+              </div>
             </div>
             <p className="hint">
-              Rates and volatility are decimals: 0.04 = 4%. European exercise,
-              no dividends (q = 0), constant rate and volatility.
+              Rates, volatility and dividend yield are decimals: 0.04 = 4%.
+              European exercise, constant rate and volatility; dividend yield q
+              defaults to 0 (non-dividend payer).
             </p>
           </div>
         </div>

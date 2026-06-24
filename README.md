@@ -24,7 +24,8 @@ re-implements the math):
    prices, plus the position's net Greeks.
 2. **Greeks visualizer** — move sliders for spot, time-to-expiry, and volatility
    and watch all five Greeks respond live, as small-multiple charts of each Greek
-   against a chosen axis.
+   against a chosen axis. Includes a BSM-vs-binomial (European/American) price
+   comparison with the early-exercise premium.
 3. **Chain + model-vs-market** — pull a real options chain for a liquid underlying,
    pick a contract, and put the model's price and implied volatility next to the
    market's bid/ask and quoted IV.
@@ -40,17 +41,19 @@ is what that right is worth today.
 The **Black-Scholes-Merton (BSM)** model answers it for European options (exercisable
 only at expiry). It assumes the underlying price follows a lognormal random walk with
 constant volatility, and prices the option as the discounted expected payoff under a
-risk-neutral measure. The closed-form result for a non-dividend-paying stock:
+risk-neutral measure. The closed-form result, with Merton's continuous dividend
+yield `q` (set `q = 0` for a non-dividend-paying stock):
 
 ```
-Call = S·N(d1) − K·e^(−rT)·N(d2)
-Put  = K·e^(−rT)·N(−d2) − S·N(−d1)
-  d1 = [ln(S/K) + (r + σ²/2)·T] / (σ·√T)
+Call = S·e^(−qT)·N(d1) − K·e^(−rT)·N(d2)
+Put  = K·e^(−rT)·N(−d2) − S·e^(−qT)·N(−d1)
+  d1 = [ln(S/K) + (r − q + σ²/2)·T] / (σ·√T)
   d2 = d1 − σ·√T
 ```
 
 where `S` = spot, `K` = strike, `T` = years to expiry, `r` = risk-free rate,
-`σ` = volatility, and `N(·)` is the standard normal CDF.
+`q` = continuous dividend yield, `σ` = volatility, and `N(·)` is the standard
+normal CDF.
 
 **The Greeks** are the sensitivities of the price to its inputs — the language of
 options risk:
@@ -82,11 +85,14 @@ All rates and volatilities are **decimals** (`0.05` = 5%, never `5`); time is in
 
 ## Assumptions (stated, because they govern every number)
 
-- **European exercise.** No early exercise. American options would need a
-  binomial/PDE model (out of scope for v1).
+- **European exercise** for the BSM engine. American exercise is priced
+  separately by the binomial (CRR) model (see below).
 - **Constant volatility and constant, continuously-compounded risk-free rate.**
-- **No dividends** (dividend yield `q = 0`). Prices and Greeks assume a
-  non-dividend-paying underlying. A continuous yield `q` is a planned addition.
+- **Continuous dividend yield `q`** (Merton's extension), a decimal that defaults
+  to `0` — a non-dividend-paying underlying. Set `q > 0` to price a
+  dividend-paying name; `q` enters the `d1`/`d2` drift as `r − q` and discounts
+  the spot by `e^(−qT)`. At `q = 0` every price and Greek matches the original
+  BSM exactly.
 - **Risk-free rate source:** a user-supplied constant (default `0.04`). There is no
   live rate feed; you set the rate you want to price against.
 - **Frictionless:** no transaction costs, taxes, or borrowing constraints.
@@ -124,11 +130,31 @@ See `backend/pricing/implied_volatility.py`.
 
 ---
 
+## The binomial (CRR) model
+
+BSM prices European exercise only. To handle **American** options — exercisable
+any time before expiry — the tool also includes a Cox-Ross-Rubinstein binomial
+model (`backend/pricing/binomial.py`).
+
+It builds a recombining tree of up/down price moves and values the option by
+backward induction; at each node an American option takes the larger of holding
+on (the continuation value) and exercising immediately. Default 100 steps trades
+accuracy for speed (error shrinks roughly like `1/steps`, work grows like
+`steps²`).
+
+The Greeks view shows BSM next to CRR European and CRR American prices, and the
+**early-exercise premium** (American − European): the extra value of being able
+to exercise early. It is essentially zero for calls on non-dividend-paying stocks
+(early exercise is never worthwhile) and positive for American puts — both of
+which the tests check against known results.
+
+---
+
 ## How correctness was validated
 
 Numerics are only trustworthy if you can *demonstrate* they're right. Every pricing
 output is checked against an independent reference
-(`backend/tests/`, run with `pytest` — 75 tests):
+(`backend/tests/`, run with `pytest` — 108 tests):
 
 - **Cited textbook value.** The BSM engine reproduces a worked example from John C.
   Hull, *Options, Futures, and Other Derivatives* (S=42, K=40, r=0.10, σ=0.20,
@@ -147,6 +173,13 @@ output is checked against an independent reference
 - **Strategy invariants.** Net Greeks equal the sum of per-leg Greeks; payoff bounds
   match known results (a vertical caps at its width, a covered call at its strike, an
   iron condor's gross payoff peaks at zero).
+- **Dividends.** `q = 0` reproduces the no-dividend BSM exactly; put-call parity
+  holds in its dividend form `C − P = S·e^(−qT) − K·e^(−rT)`; the Greeks still match
+  finite differences with `q > 0`.
+- **Binomial (CRR).** The European tree converges to BSM as steps increase
+  (50/100/200, tightening tolerance); the American call on a non-dividend stock
+  equals the European (zero early-exercise premium, per Merton 1973); American-put
+  premiums are positive for ITM puts.
 
 QuantLib is *not* a runtime dependency; references are textbook values and analytic
 invariants.
@@ -164,8 +197,10 @@ A model is a lens, not the truth. Where this tool is weak:
   - **Fat tails:** real returns have more extreme moves than the lognormal assumes, so
     BSM tends to misprice deep out-of-the-money options.
   - **Constant volatility and rate** are simplifications; both move in reality.
-  - **No dividends and European exercise** mean American or dividend-paying names are
-    only approximated.
+  - **Dividends** are modelled only as a single constant continuous yield `q`, not
+    as the discrete, dated payments real stocks make; and **early exercise** is
+    approximated by the binomial tree (with a discrete number of steps) rather than
+    solved exactly.
 - **Data quality and lag.** The chain comes from a free, unofficial source (yfinance).
   It can be **stale, sparse, or wrong**, rate-limit, or change shape without notice.
   When the market is closed, bid/ask often come back as `0` and the provider's quoted
