@@ -1,11 +1,27 @@
-// M0 placeholder. Intentionally unstyled and feature-free — the three views
-// (payoff visualizer, Greek-sensitivity, chain vs. model) and all styling are
-// built in later milestones through the ui-ux-pro-max skill.
+import PayoffVisualizer from "@/components/PayoffVisualizer";
+
+// Server component: static shell + the client visualizer as the interactive
+// leaf (per the Next.js "push client components down" guideline).
 export default function Home() {
   return (
-    <main>
-      <h1>Options Analytics</h1>
-      <p>Pricing and risk-analysis for equity options. Setup in progress.</p>
-    </main>
+    <>
+      <header className="app-header">
+        <div className="app-header-inner">
+          <div>
+            <h1 className="app-title">Options Analytics</h1>
+            <p className="app-subtitle">
+              Multi-leg payoff &amp; risk under Black-Scholes-Merton
+            </p>
+          </div>
+          <p className="app-subtitle" style={{ maxWidth: 380, textAlign: "right" }}>
+            Theoretical values for analysis under stated model assumptions — not
+            trading advice.
+          </p>
+        </div>
+      </header>
+      <main>
+        <PayoffVisualizer />
+      </main>
+    </>
   );
 }
