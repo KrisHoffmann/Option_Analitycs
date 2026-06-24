@@ -87,6 +87,12 @@ export const GLOSSARY = {
     body: "The midpoint between the bid and ask, used here as a single reference market price. It is a steadier input than the last trade, which can be hours stale on an illiquid contract.",
   },
 
+  // ---- model comparison ----
+  earlyExercisePremium: {
+    term: "Early-exercise premium",
+    body: "The extra value an American option has over an otherwise identical European one, because it can be exercised any time before expiry rather than only at expiry. It is zero for calls on non-dividend-paying stocks — exercising early is never worthwhile — while American puts can carry a real premium.",
+  },
+
   // ---- strategies ----
   verticalSpread: {
     term: "Vertical spread",

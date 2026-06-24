@@ -685,6 +685,63 @@ dl.kv dd .muted {
   font-size: 12px;
 }
 
+/* ---- model comparison panel ---- */
+.cmp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.cmp-cell {
+  background: var(--surface);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cmp-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 600;
+}
+.cmp-value {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.cmp-sub {
+  font-size: 11px;
+  color: var(--muted-2);
+}
+.cmp-premium {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fff8ef;
+  border: 1px solid #f3dcbd;
+  border-radius: 7px;
+}
+.cmp-premium-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--current);
+  display: inline-flex;
+  align-items: center;
+}
+.cmp-premium-value {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--current);
+}
+
 /* ---- info tooltips ---- */
 .infotip {
   display: inline-flex;

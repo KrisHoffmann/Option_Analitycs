@@ -16,6 +16,8 @@ from api.schemas import (
     ImpliedVolatilityResponse,
     PositionRequest,
     PositionResponse,
+    PriceComparisonRequest,
+    PriceComparisonResponse,
     PriceResponse,
     SensitivityRequest,
     SensitivityResponse,
@@ -31,6 +33,7 @@ from data import (
     get_chain_provider,
     get_option_chain,
 )
+from pricing.binomial import crr_price
 from pricing.black_scholes import price_and_greeks
 from pricing.implied_volatility import (
     ImpliedVolatilityError,
@@ -65,6 +68,33 @@ def price_contract(request: ContractRequest) -> PriceResponse:
         price=result.price,
         greeks=_greeks_response(result.delta, result.gamma, result.theta,
                                 result.vega, result.rho),
+    )
+
+
+@router.post("/price-comparison", response_model=PriceComparisonResponse)
+def price_comparison(request: PriceComparisonRequest) -> PriceComparisonResponse:
+    """Compare BSM with the CRR binomial model (European and American exercise).
+
+    BSM assumes European exercise; CRR handles both. The early-exercise premium
+    (American − European) is the extra value of being able to exercise early.
+    """
+    c = request.contract
+    try:
+        bsm = price_and_greeks(c.option_type, c.spot, c.strike,
+                               c.time_to_expiry, c.risk_free_rate, c.volatility)
+        crr_args = (c.option_type, c.spot, c.strike, c.time_to_expiry,
+                    c.risk_free_rate, c.volatility)
+        crr_euro = crr_price(*crr_args, steps=request.steps, american=False)
+        crr_amer = crr_price(*crr_args, steps=request.steps, american=True)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return PriceComparisonResponse(
+        bsm_price=bsm.price,
+        greeks=_greeks_response(bsm.delta, bsm.gamma, bsm.theta, bsm.vega, bsm.rho),
+        crr_european=crr_euro,
+        crr_american=crr_amer,
+        early_exercise_premium=crr_amer - crr_euro,
+        steps=request.steps,
     )
 
 

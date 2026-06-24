@@ -46,6 +46,24 @@ class PriceResponse(BaseModel):
 
 
 # --------------------------------------------------------------------------
+# BSM vs binomial (CRR) comparison
+# --------------------------------------------------------------------------
+class PriceComparisonRequest(BaseModel):
+    contract: ContractRequest
+    steps: int = Field(default=100, ge=10, le=2000,
+                       description="CRR tree steps (accuracy vs. speed)")
+
+
+class PriceComparisonResponse(BaseModel):
+    bsm_price: float
+    greeks: GreeksResponse
+    crr_european: float
+    crr_american: float
+    early_exercise_premium: float  # crr_american - crr_european
+    steps: int
+
+
+# --------------------------------------------------------------------------
 # Implied volatility
 # --------------------------------------------------------------------------
 class ImpliedVolatilityRequest(BaseModel):

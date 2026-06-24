@@ -10,6 +10,8 @@ import type {
   OptionChain,
   PositionRequest,
   PositionResponse,
+  PriceComparisonRequest,
+  PriceComparisonResponse,
   PriceResponse,
   SensitivityRequest,
   SensitivityResponse,
@@ -100,6 +102,16 @@ export function fetchSensitivity(
 ): Promise<SensitivityResponse> {
   return postJson<SensitivityRequest, SensitivityResponse>(
     "/sensitivity",
+    request,
+  );
+}
+
+/** Compare BSM with the CRR binomial model (European + American exercise). */
+export function fetchPriceComparison(
+  request: PriceComparisonRequest,
+): Promise<PriceComparisonResponse> {
+  return postJson<PriceComparisonRequest, PriceComparisonResponse>(
+    "/price-comparison",
     request,
   );
 }

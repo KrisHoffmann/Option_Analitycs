@@ -93,6 +93,21 @@ export interface SensitivityResponse {
   metric_values: number[];
 }
 
+// --- BSM vs binomial (CRR) comparison ---
+export interface PriceComparisonRequest {
+  contract: ContractRequest;
+  steps: number;
+}
+
+export interface PriceComparisonResponse {
+  bsm_price: number;
+  greeks: Greeks;
+  crr_european: number;
+  crr_american: number;
+  early_exercise_premium: number;
+  steps: number;
+}
+
 // --- implied volatility ---
 export interface ImpliedVolatilityRequest {
   option_type: OptionType;

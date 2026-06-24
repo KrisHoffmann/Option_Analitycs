@@ -11,6 +11,7 @@ import type {
   SensitivityVariable,
 } from "@/lib/types";
 import InfoTip from "./InfoTip";
+import ModelComparison from "./ModelComparison";
 import SensitivityChart from "./SensitivityChart";
 import Slider from "./Slider";
 
@@ -247,6 +248,17 @@ export default function GreeksVisualizer() {
             </p>
           </div>
         </div>
+
+        <ModelComparison
+          contract={{
+            option_type: optionType,
+            spot,
+            strike,
+            time_to_expiry: timeToExpiry,
+            risk_free_rate: riskFreeRate,
+            volatility,
+          }}
+        />
       </div>
 
       {/* ---------- small multiples ---------- */}

@@ -35,6 +35,27 @@ def test_price_rejects_invalid_input():
     assert client.post("/price", json=bad).status_code == 422
 
 
+def test_price_comparison_endpoint():
+    resp = client.post("/price-comparison", json={"contract": HULL, "steps": 200})
+    assert resp.status_code == 200
+    body = resp.json()
+    # CRR European tracks BSM; an American call on a non-dividend stock adds no
+    # early-exercise premium.
+    assert body["crr_european"] == pytest.approx(body["bsm_price"], abs=0.02)
+    assert body["early_exercise_premium"] == pytest.approx(0.0, abs=1e-6)
+    assert set(body["greeks"]) == {"delta", "gamma", "theta", "vega", "rho"}
+    assert body["steps"] == 200
+
+
+def test_price_comparison_american_put_has_premium():
+    contract = {"option_type": "put", "spot": 85, "strike": 100,
+                "time_to_expiry": 1.0, "risk_free_rate": 0.06, "volatility": 0.30}
+    body = client.post("/price-comparison",
+                       json={"contract": contract, "steps": 200}).json()
+    assert body["crr_american"] > body["crr_european"]
+    assert body["early_exercise_premium"] > 1e-3
+
+
 def test_implied_volatility_roundtrip():
     market = client.post("/price", json=HULL).json()["price"]
     resp = client.post("/implied-volatility", json={
