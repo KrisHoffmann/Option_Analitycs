@@ -20,3 +20,6 @@ out/
 *:Zone.Identifier
 .idea/
 .vscode/
+
+# Local Claude Code tooling (skills, settings) — not project code
+.claude/

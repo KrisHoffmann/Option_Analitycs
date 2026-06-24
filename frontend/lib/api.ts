@@ -2,7 +2,19 @@
 // sends requests and surfaces errors. Base URL comes from NEXT_PUBLIC_API_URL
 // (set in Vercel for production; defaults to local dev).
 
-import type { ApiErrorBody, PositionRequest, PositionResponse } from "./types";
+import type {
+  ApiErrorBody,
+  ContractRequest,
+  ImpliedVolatilityRequest,
+  ImpliedVolatilityResponse,
+  OptionChain,
+  PositionRequest,
+  PositionResponse,
+  PriceResponse,
+  SensitivityRequest,
+  SensitivityResponse,
+  TickersResponse,
+} from "./types";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:8000";
@@ -27,6 +39,32 @@ function extractDetail(body: ApiErrorBody | undefined, status: number): string {
   return `Request failed (${status}).`;
 }
 
+async function handleResponse<TRes>(response: Response): Promise<TRes> {
+  if (!response.ok) {
+    let body: ApiErrorBody | undefined;
+    try {
+      body = (await response.json()) as ApiErrorBody;
+    } catch {
+      body = undefined;
+    }
+    throw new ApiError(extractDetail(body, response.status), response.status);
+  }
+  return (await response.json()) as TRes;
+}
+
+async function getJson<TRes>(path: string): Promise<TRes> {
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}${path}`);
+  } catch {
+    throw new ApiError(
+      `Could not reach the pricing service at ${BASE_URL}. Is the backend running?`,
+      0,
+    );
+  }
+  return handleResponse<TRes>(response);
+}
+
 async function postJson<TReq, TRes>(path: string, payload: TReq): Promise<TRes> {
   let response: Response;
   try {
@@ -41,16 +79,7 @@ async function postJson<TReq, TRes>(path: string, payload: TReq): Promise<TRes> 
       0,
     );
   }
-  if (!response.ok) {
-    let body: ApiErrorBody | undefined;
-    try {
-      body = (await response.json()) as ApiErrorBody;
-    } catch {
-      body = undefined;
-    }
-    throw new ApiError(extractDetail(body, response.status), response.status);
-  }
-  return (await response.json()) as TRes;
+  return handleResponse<TRes>(response);
 }
 
 /** Payoff-at-expiry + current-value curves and net Greeks for a position. */
@@ -58,4 +87,39 @@ export function fetchPosition(
   request: PositionRequest,
 ): Promise<PositionResponse> {
   return postJson<PositionRequest, PositionResponse>("/position", request);
+}
+
+/** Price + all five Greeks for a single contract (point values). */
+export function fetchPrice(request: ContractRequest): Promise<PriceResponse> {
+  return postJson<ContractRequest, PriceResponse>("/price", request);
+}
+
+/** A price/Greek series as one input is swept over a range. */
+export function fetchSensitivity(
+  request: SensitivityRequest,
+): Promise<SensitivityResponse> {
+  return postJson<SensitivityRequest, SensitivityResponse>(
+    "/sensitivity",
+    request,
+  );
+}
+
+/** Back out the implied volatility for an observed market price. */
+export function fetchImpliedVolatility(
+  request: ImpliedVolatilityRequest,
+): Promise<ImpliedVolatilityResponse> {
+  return postJson<ImpliedVolatilityRequest, ImpliedVolatilityResponse>(
+    "/implied-volatility",
+    request,
+  );
+}
+
+/** The list of underlyings a chain can be fetched for. */
+export function fetchTickers(): Promise<TickersResponse> {
+  return getJson<TickersResponse>("/tickers");
+}
+
+/** The live options chain for a supported ticker. */
+export function fetchChain(ticker: string): Promise<OptionChain> {
+  return getJson<OptionChain>(`/chain/${encodeURIComponent(ticker)}`);
 }

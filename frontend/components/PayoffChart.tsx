@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { axisTick, money } from "@/lib/format";
+import { niceTicks } from "@/lib/scale";
 
 interface PayoffChartProps {
   spots: number[];
@@ -13,27 +14,6 @@ interface PayoffChartProps {
 
 const HEIGHT = 380;
 const M = { top: 16, right: 18, bottom: 44, left: 64 };
-
-/** "Nice" evenly-spaced tick values across [min, max]. */
-function niceTicks(min: number, max: number, count: number): number[] {
-  if (min === max) return [min];
-  const range = niceNum(max - min, false);
-  const step = niceNum(range / (count - 1), true);
-  const start = Math.ceil(min / step) * step;
-  const ticks: number[] = [];
-  for (let v = start; v <= max + step * 1e-6; v += step) {
-    ticks.push(Math.abs(v) < step * 1e-6 ? 0 : v);
-  }
-  return ticks;
-}
-function niceNum(range: number, round: boolean): number {
-  const exp = Math.floor(Math.log10(range));
-  const frac = range / 10 ** exp;
-  let nice: number;
-  if (round) nice = frac < 1.5 ? 1 : frac < 3 ? 2 : frac < 7 ? 5 : 10;
-  else nice = frac <= 1 ? 1 : frac <= 2 ? 2 : frac <= 5 ? 5 : 10;
-  return nice * 10 ** exp;
-}
 
 export default function PayoffChart({
   spots,
