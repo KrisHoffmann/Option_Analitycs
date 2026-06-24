@@ -6,9 +6,7 @@ quant-finance portfolio piece and a personal options-research tool.
 
 **Live:**
 - Frontend (Vercel): https://option-analitycs.vercel.app
-- Backend API (Railway): https://optionanalitycs-production.up.railway.app
-  ([`/health`](https://optionanalitycs-production.up.railway.app/health),
-  interactive docs at `/docs`)
+- Backend API (Railway)
 
 > This is a **pricing and risk** tool, not a trading-signal generator. It tells you
 > what an option is worth *under a stated model and assumptions* and how its value
