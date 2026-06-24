@@ -1,0 +1,17 @@
+# The backend is a deployed service, not a distributable library, so this file
+# carries tooling config only (ruff, pytest). Dependencies live in
+# requirements.txt (runtime) and requirements-dev.txt (test/lint).
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+# Sensible defaults: pyflakes, pycodestyle, isort, bugbear, pyupgrade.
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+# Tests import the backend packages directly (e.g. `from api.main import app`),
+# so put the backend root on the path.
+pythonpath = ["."]
+testpaths = ["tests"]

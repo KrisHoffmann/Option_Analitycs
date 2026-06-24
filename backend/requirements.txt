@@ -1,0 +1,4 @@
+# Runtime dependencies (mirrors [project.dependencies] in pyproject.toml).
+# Used by the Railway deploy in M10. Dev/test tooling lives in the `dev` extra.
+fastapi>=0.110
+uvicorn[standard]>=0.29
