@@ -1,5 +1,8 @@
 "use client";
 
+import type { GlossaryKey } from "@/lib/glossary";
+import InfoTip from "./InfoTip";
+
 interface SliderProps {
   id: string;
   label: string;
@@ -10,6 +13,7 @@ interface SliderProps {
   value: number;
   display: string; // formatted current value
   onChange: (value: number) => void;
+  infoKey?: GlossaryKey;
 }
 
 export default function Slider({
@@ -22,12 +26,14 @@ export default function Slider({
   value,
   display,
   onChange,
+  infoKey,
 }: SliderProps) {
   return (
     <div className="slider-row">
       <div className="slider-top">
         <label htmlFor={id}>
           {label} {unit && <span className="unit">{unit}</span>}
+          {infoKey && <InfoTip k={infoKey} />}
         </label>
         <span className="slider-value num">{display}</span>
       </div>

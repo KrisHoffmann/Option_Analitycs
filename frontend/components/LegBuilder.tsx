@@ -8,6 +8,7 @@ import {
   type UiLeg,
   makeLeg,
 } from "@/lib/position";
+import InfoTip from "./InfoTip";
 
 interface LegBuilderProps {
   legs: UiLeg[];
@@ -36,13 +37,12 @@ export default function LegBuilder({ legs, onChange }: LegBuilderProps) {
       <div className="panel-body">
         <div className="preset-row" role="group" aria-label="Strategy presets">
           {PRESETS.map((preset) => (
-            <button
-              type="button"
-              key={preset.name}
-              onClick={() => onChange(preset.build())}
-            >
-              {preset.name}
-            </button>
+            <span className="preset-item" key={preset.name}>
+              <button type="button" onClick={() => onChange(preset.build())}>
+                {preset.name}
+              </button>
+              <InfoTip k={preset.infoKey} />
+            </span>
           ))}
         </div>
 

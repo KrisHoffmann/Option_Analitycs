@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, fetchPrice, fetchSensitivity } from "@/lib/api";
 import { decimals, money } from "@/lib/format";
+import type { GlossaryKey } from "@/lib/glossary";
 import type {
   Greeks,
   OptionType,
   SensitivityMetric,
   SensitivityVariable,
 } from "@/lib/types";
+import InfoTip from "./InfoTip";
 import SensitivityChart from "./SensitivityChart";
 import Slider from "./Slider";
 
@@ -138,6 +140,7 @@ export default function GreeksVisualizer() {
               <div className="field">
                 <label htmlFor="g-strike">
                   Strike <span className="unit">($)</span>
+                  <InfoTip k="strike" />
                 </label>
                 <input
                   id="g-strike"
@@ -151,6 +154,7 @@ export default function GreeksVisualizer() {
               <div className="field">
                 <label htmlFor="g-rate">
                   Risk-free rate <span className="unit">(dec.)</span>
+                  <InfoTip k="riskFreeRate" />
                 </label>
                 <input
                   id="g-rate"
@@ -161,7 +165,10 @@ export default function GreeksVisualizer() {
                 />
               </div>
               <div className="field stat">
-                <label>Model price</label>
+                <label>
+                  Model price
+                  <InfoTip k="modelPrice" />
+                </label>
                 <span className="stat-value num">
                   {point ? `$${money(point.price)}` : "—"}
                 </span>
@@ -185,6 +192,7 @@ export default function GreeksVisualizer() {
               value={spot}
               display={money(spot)}
               onChange={setSpot}
+              infoKey="spot"
             />
             <Slider
               id="g-time"
@@ -196,6 +204,7 @@ export default function GreeksVisualizer() {
               value={timeToExpiry}
               display={decimals(timeToExpiry, 2)}
               onChange={setTimeToExpiry}
+              infoKey="timeToExpiry"
             />
             <Slider
               id="g-vol"
@@ -207,6 +216,7 @@ export default function GreeksVisualizer() {
               value={volatility}
               display={decimals(volatility, 2)}
               onChange={setVolatility}
+              infoKey="volatility"
             />
             <p className="hint">European exercise · no dividends (q = 0).</p>
           </div>
@@ -251,6 +261,7 @@ export default function GreeksVisualizer() {
                   <div className="sm-head">
                     <div>
                       <span className="sm-title">{m.title}</span>
+                      <InfoTip k={m.key as GlossaryKey} />
                       <span className="sm-unit">{m.unit}</span>
                     </div>
                   </div>
@@ -269,6 +280,7 @@ export default function GreeksVisualizer() {
                 markerX={markerX}
                 markerY={point[m.key]}
                 valueText={decimals(point[m.key], 4)}
+                infoKey={m.key as GlossaryKey}
               />
             );
           })}

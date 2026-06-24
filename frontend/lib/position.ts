@@ -3,6 +3,7 @@
 // backend prices whatever legs it is sent), so the user can start from a
 // recognizable structure and adjust.
 
+import type { GlossaryKey } from "./glossary";
 import type { Instrument, LegInput, Side, SpotGridSpec } from "./types";
 
 export interface UiLeg {
@@ -76,9 +77,10 @@ export function deriveGrid(spot: number, legs: UiLeg[]): SpotGridSpec {
 
 const t = 0.5; // shared default expiry for presets (years)
 
-export const PRESETS: { name: string; build: () => UiLeg[] }[] = [
+export const PRESETS: { name: string; infoKey: GlossaryKey; build: () => UiLeg[] }[] = [
   {
     name: "Bull call spread",
+    infoKey: "verticalSpread",
     build: () => [
       makeLeg({ instrument: "call", side: "long", strike: 95, timeToExpiry: t }),
       makeLeg({ instrument: "call", side: "short", strike: 105, timeToExpiry: t }),
@@ -86,13 +88,31 @@ export const PRESETS: { name: string; build: () => UiLeg[] }[] = [
   },
   {
     name: "Long straddle",
+    infoKey: "straddle",
     build: () => [
       makeLeg({ instrument: "call", side: "long", strike: 100, timeToExpiry: t }),
       makeLeg({ instrument: "put", side: "long", strike: 100, timeToExpiry: t }),
     ],
   },
   {
+    name: "Long strangle",
+    infoKey: "strangle",
+    build: () => [
+      makeLeg({ instrument: "put", side: "long", strike: 90, timeToExpiry: t }),
+      makeLeg({ instrument: "call", side: "long", strike: 110, timeToExpiry: t }),
+    ],
+  },
+  {
+    name: "Call calendar",
+    infoKey: "calendarSpread",
+    build: () => [
+      makeLeg({ instrument: "call", side: "short", strike: 100, timeToExpiry: 0.25 }),
+      makeLeg({ instrument: "call", side: "long", strike: 100, timeToExpiry: 0.75 }),
+    ],
+  },
+  {
     name: "Covered call",
+    infoKey: "coveredCall",
     build: () => [
       makeLeg({ instrument: "underlying", side: "long", quantity: 1 }),
       makeLeg({ instrument: "call", side: "short", strike: 105, timeToExpiry: t }),
@@ -100,6 +120,7 @@ export const PRESETS: { name: string; build: () => UiLeg[] }[] = [
   },
   {
     name: "Iron condor",
+    infoKey: "ironCondor",
     build: () => [
       makeLeg({ instrument: "put", side: "long", strike: 80, timeToExpiry: t }),
       makeLeg({ instrument: "put", side: "short", strike: 90, timeToExpiry: t }),

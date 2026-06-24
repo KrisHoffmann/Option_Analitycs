@@ -2,6 +2,7 @@
 
 import { decimals, money } from "@/lib/format";
 import type { Greeks, OptionQuote } from "@/lib/types";
+import InfoTip from "./InfoTip";
 
 export interface Comparison {
   computing: boolean;
@@ -18,6 +19,7 @@ export interface Comparison {
 interface ModelVsMarketProps {
   quote: OptionQuote | null;
   expiry: string;
+  spot: number;
   comparison: Comparison;
 }
 
@@ -28,6 +30,7 @@ function val(value: number | null, dp: number, prefix = ""): string {
 export default function ModelVsMarket({
   quote,
   expiry,
+  spot,
   comparison: c,
 }: ModelVsMarketProps) {
   if (!quote) {
@@ -51,6 +54,14 @@ export default function ModelVsMarket({
       ? c.modelPrice - c.marketMid
       : null;
 
+  // Intrinsic value is trivial payoff arithmetic (allowed client-side per the
+  // architecture doc); time value is the model price above intrinsic.
+  const intrinsic =
+    quote.option_type === "call"
+      ? Math.max(spot - quote.strike, 0)
+      : Math.max(quote.strike - spot, 0);
+  const timeValue = c.modelPrice !== null ? c.modelPrice - intrinsic : null;
+
   return (
     <div className="panel">
       <div className="panel-head">
@@ -67,11 +78,15 @@ export default function ModelVsMarket({
             <dd className="num">
               {val(quote.bid, 2)} / {val(quote.ask, 2)}
             </dd>
-            <dt>Mid</dt>
+            <dt>
+              Mid <InfoTip k="mid" />
+            </dt>
             <dd className="num">{val(c.marketMid, 2, "$")}</dd>
             <dt>Last</dt>
             <dd className="num">{val(quote.last_price, 2, "$")}</dd>
-            <dt>Implied vol (quoted)</dt>
+            <dt>
+              Implied vol (quoted) <InfoTip k="impliedVolatility" />
+            </dt>
             <dd className="num">{val(quote.implied_volatility, 4)}</dd>
           </dl>
         </div>
@@ -79,7 +94,9 @@ export default function ModelVsMarket({
         <div className="kv-section">
           <h3 className="kv-title">Model (Black-Scholes-Merton)</h3>
           <dl className="kv">
-            <dt>Implied vol (solved)</dt>
+            <dt>
+              Implied vol (solved) <InfoTip k="impliedVolatility" />
+            </dt>
             <dd className="num">
               {c.modelIV !== null ? (
                 decimals(c.modelIV, 4)
@@ -87,8 +104,18 @@ export default function ModelVsMarket({
                 <span className="muted">{c.modelIVNote ?? "—"}</span>
               )}
             </dd>
-            <dt>Model price</dt>
+            <dt>
+              Model price <InfoTip k="modelPrice" />
+            </dt>
             <dd className="num">{val(c.modelPrice, 2, "$")}</dd>
+            <dt>
+              Intrinsic value <InfoTip k="intrinsicValue" />
+            </dt>
+            <dd className="num">{val(intrinsic, 2, "$")}</dd>
+            <dt>
+              Time value <InfoTip k="timeValue" />
+            </dt>
+            <dd className="num">{val(timeValue, 2, "$")}</dd>
             <dt>Model − market mid</dt>
             <dd className="num">
               {priceGap === null

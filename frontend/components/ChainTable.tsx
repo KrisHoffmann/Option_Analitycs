@@ -2,6 +2,7 @@
 
 import { decimals, money } from "@/lib/format";
 import type { OptionQuote } from "@/lib/types";
+import InfoTip from "./InfoTip";
 
 interface ChainTableProps {
   quotes: OptionQuote[];
@@ -35,11 +36,19 @@ export default function ChainTable({
       <table className="chain-table">
         <thead>
           <tr>
-            <th className="r">Strike</th>
-            <th className="r">Bid</th>
-            <th className="r">Ask</th>
+            <th className="r">
+              Strike <InfoTip k="strike" />
+            </th>
+            <th className="r">
+              Bid <InfoTip k="bid" />
+            </th>
+            <th className="r">
+              Ask <InfoTip k="ask" />
+            </th>
             <th className="r">Last</th>
-            <th className="r">IV</th>
+            <th className="r">
+              IV <InfoTip k="impliedVolatility" />
+            </th>
             <th className="r">Vol</th>
             <th className="r">OI</th>
           </tr>

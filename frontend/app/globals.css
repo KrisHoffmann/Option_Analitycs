@@ -273,7 +273,11 @@ button:disabled {
 .preset-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 6px 10px;
+}
+.preset-item {
+  display: inline-flex;
+  align-items: center;
 }
 .preset-row button {
   font-size: 12px;
@@ -679,6 +683,63 @@ dl.kv dd {
 dl.kv dd .muted {
   color: var(--muted-2);
   font-size: 12px;
+}
+
+/* ---- info tooltips ---- */
+.infotip {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+.infotip-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin-left: 4px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted-2);
+  cursor: pointer;
+}
+.infotip-trigger:hover {
+  color: var(--accent);
+  background: transparent;
+}
+.infotip-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.infotip-pop {
+  position: fixed;
+  z-index: 100;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.14);
+  padding: 10px 12px;
+  font-family: var(--font-sans), sans-serif;
+}
+.infotip-pop.above {
+  transform: translateY(-100%);
+}
+.infotip-term {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.infotip-body {
+  display: block;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink);
 }
 
 @media (prefers-reduced-motion: reduce) {

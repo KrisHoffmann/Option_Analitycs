@@ -1,5 +1,7 @@
 import type { Greeks } from "@/lib/types";
+import type { GlossaryKey } from "@/lib/glossary";
 import { decimals } from "@/lib/format";
+import InfoTip from "./InfoTip";
 
 interface NetGreeksTableProps {
   greeks: Greeks;
@@ -32,7 +34,10 @@ export default function NetGreeksTable({ greeks, spot }: NetGreeksTableProps) {
             const value = greeks[key];
             return (
               <div className="greek" key={key}>
-                <span className="greek-name">{name}</span>
+                <span className="greek-name">
+                  {name}
+                  <InfoTip k={key as GlossaryKey} />
+                </span>
                 <span className={`greek-value num${value < 0 ? " neg" : ""}`}>
                   {decimals(value, 4)}
                 </span>

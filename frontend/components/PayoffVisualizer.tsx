@@ -10,6 +10,7 @@ import {
   toLegInput,
 } from "@/lib/position";
 import type { PositionResponse } from "@/lib/types";
+import InfoTip from "./InfoTip";
 import LegBuilder from "./LegBuilder";
 import NetGreeksTable from "./NetGreeksTable";
 import PayoffChart from "./PayoffChart";
@@ -79,6 +80,7 @@ export default function PayoffVisualizer() {
               <div className="field">
                 <label htmlFor="spot">
                   Spot <span className="unit">($)</span>
+                  <InfoTip k="spot" />
                 </label>
                 <input
                   id="spot"
@@ -92,6 +94,7 @@ export default function PayoffVisualizer() {
               <div className="field">
                 <label htmlFor="rate">
                   Risk-free rate <span className="unit">(decimal)</span>
+                  <InfoTip k="riskFreeRate" />
                 </label>
                 <input
                   id="rate"
@@ -104,6 +107,7 @@ export default function PayoffVisualizer() {
               <div className="field">
                 <label htmlFor="vol">
                   Volatility <span className="unit">(decimal)</span>
+                  <InfoTip k="volatility" />
                 </label>
                 <input
                   id="vol"

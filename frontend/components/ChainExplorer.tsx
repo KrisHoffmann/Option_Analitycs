@@ -317,6 +317,7 @@ export default function ChainExplorer() {
         <ModelVsMarket
           quote={selectedQuote}
           expiry={expiry?.expiry ?? ""}
+          spot={chain?.spot ?? 0}
           comparison={comparison}
         />
       </div>

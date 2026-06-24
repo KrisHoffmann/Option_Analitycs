@@ -1,7 +1,9 @@
 "use client";
 
 import { axisTick } from "@/lib/format";
+import type { GlossaryKey } from "@/lib/glossary";
 import { niceTicks, zeroAnchoredDomain } from "@/lib/scale";
+import InfoTip from "./InfoTip";
 
 interface SensitivityChartProps {
   title: string;
@@ -12,6 +14,7 @@ interface SensitivityChartProps {
   markerX: number;
   markerY: number;
   valueText: string;
+  infoKey?: GlossaryKey;
 }
 
 // Fixed internal coordinate system; scales to the grid cell via viewBox. No
@@ -30,6 +33,7 @@ export default function SensitivityChart({
   markerX,
   markerY,
   valueText,
+  infoKey,
 }: SensitivityChartProps) {
   const innerW = W - M.left - M.right;
   const innerH = H - M.top - M.bottom;
@@ -56,6 +60,7 @@ export default function SensitivityChart({
       <div className="sm-head">
         <div>
           <span className="sm-title">{title}</span>
+          {infoKey && <InfoTip k={infoKey} />}
           <span className="sm-unit">{unit}</span>
         </div>
         <span className="sm-value num">{valueText}</span>
