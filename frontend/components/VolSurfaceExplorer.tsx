@@ -223,10 +223,14 @@ export default function VolSurfaceExplorer() {
             <div className="panel-body">
               <SmileSlices surface={surface} kWindow={kWindow} />
               <p className="surf-notes">
-                Toggle expiries above. Drawn as curves, the skew is unmistakable:
-                the lines lift toward low <span className="num">k</span>. If BSM
-                held, every line would be flat and they would stack on top of one
-                another.
+                Toggle expiries above. At the longer tenors the downside skew
+                dominates: each line lifts toward low{" "}
+                <span className="num">k</span>. The shortest-dated slice is the
+                instructive exception — near expiry the smile steepens on{" "}
+                <em>both</em> sides of <span className="num">k = 0</span>, so its
+                call wing turns up too (the short-dated smile) rather than the
+                downside alone. Either way no line is flat: if BSM held, every one
+                would be, and they would stack on top of one another.
               </p>
             </div>
           </div>
