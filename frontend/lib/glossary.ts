@@ -51,6 +51,32 @@ export const GLOSSARY = {
     body: "The part of an option's price above its intrinsic value — what the option is worth for the chance the stock moves favourably before expiry. It shrinks toward zero as expiry approaches, which is exactly what theta measures.",
   },
 
+  // ---- volatility surface ----
+  volSurface: {
+    term: "Volatility surface",
+    body: "The implied volatility of many contracts plotted together against moneyness and time to expiry, read out of live market prices. If Black-Scholes-Merton held exactly, every point would share one volatility and the surface would be flat — its shape is a direct picture of where the model's constant-volatility assumption breaks down.",
+  },
+  logMoneyness: {
+    term: "Forward log-moneyness",
+    body: "The horizontal axis here: k = ln(K / F), where F is the forward price of the stock. It re-centres every expiry so that k = 0 is at-the-money-forward, which lets smiles from different expiries line up and be compared on the same scale — negative k is downside strikes, positive k is upside.",
+  },
+  forwardPrice: {
+    term: "Forward price",
+    body: "The price for delivery of the stock at expiry, F = S·e^((r − q)T), carrying spot forward at the risk-free rate net of the dividend yield. It is the natural centre of an option smile because at-the-money-forward is where a call and a put of the same strike are worth the same.",
+  },
+  volSkew: {
+    term: "Volatility skew",
+    body: "The tendency for downside-strike (low-k) options to carry higher implied volatility than at-the-money ones — the smile tilts rather than sitting symmetric. In equity-index options this lopsided shape is persistent and reflects stronger demand for downside protection; it is exactly the deviation from flat volatility that BSM cannot capture.",
+  },
+  termStructure: {
+    term: "Term structure",
+    body: "How implied volatility changes as time to expiry lengthens, read down the vertical axis at a fixed moneyness. A rising or falling term structure shows the market pricing different amounts of movement over different horizons — another way a single constant volatility fails to describe real prices.",
+  },
+  coverageAsymmetry: {
+    term: "Coverage asymmetry",
+    body: "A liquidity fact, not a volatility one: far out-of-the-money index calls often have no two-sided market (no real bid), so those contracts are filtered out and the upside wing of the cloud thins or stops. The sparse call side is missing data from thin quoting, distinct from the skew shape measured on the points that remain.",
+  },
+
   // ---- inputs ----
   spot: {
     term: "Spot price",

@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/", label: "Payoff" },
   { href: "/greeks", label: "Greeks" },
   { href: "/chain", label: "Chain" },
+  { href: "/surface", label: "Surface" },
 ];
 
 export default function Nav() {

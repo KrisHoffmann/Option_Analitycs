@@ -16,6 +16,7 @@ import type {
   SensitivityRequest,
   SensitivityResponse,
   TickersResponse,
+  VolSurface,
 } from "./types";
 
 const BASE_URL =
@@ -134,4 +135,9 @@ export function fetchTickers(): Promise<TickersResponse> {
 /** The live options chain for a supported ticker. */
 export function fetchChain(ticker: string): Promise<OptionChain> {
   return getJson<OptionChain>(`/chain/${encodeURIComponent(ticker)}`);
+}
+
+/** The implied-volatility surface (OTM-wing IV grid) for a supported ticker. */
+export function fetchVolSurface(ticker: string): Promise<VolSurface> {
+  return getJson<VolSurface>(`/vol-surface/${encodeURIComponent(ticker)}`);
 }

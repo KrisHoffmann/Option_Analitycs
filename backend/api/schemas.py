@@ -11,6 +11,7 @@ years.
 
 from __future__ import annotations
 
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -146,3 +147,49 @@ class SensitivityResponse(BaseModel):
 # layer and serialized directly).
 class TickersResponse(BaseModel):
     tickers: list[str]
+
+
+# --------------------------------------------------------------------------
+# Volatility surface (V2-A)
+# --------------------------------------------------------------------------
+# Mirrors pricing.vol_surface dataclasses; the route maps the pure result onto
+# these for serialization (the pricing layer stays pydantic-free, like
+# BlackScholesResult).
+class SurfacePointResponse(BaseModel):
+    option_type: OptionTypeField
+    strike: float
+    log_moneyness: float = Field(description="k = ln(K / F), forward moneyness")
+    time_to_expiry: float
+    implied_volatility: float = Field(description="BSM IV (decimal) from our solver")
+    mid_price: float = Field(description="(bid + ask) / 2, the price inverted")
+    open_interest: int
+    relative_spread: float
+
+
+class FilterCountsResponse(BaseModel):
+    """How many OTM candidates were dropped, and why -- the data-quality audit."""
+
+    candidates: int
+    retained: int
+    no_two_sided_quote: int
+    spread_too_wide: int
+    insufficient_open_interest: int
+    stale_quote: int
+    solver_failed: int
+
+
+class ExpirySliceResponse(BaseModel):
+    expiry: date
+    time_to_expiry: float
+    forward: float = Field(description="F = S*e^((r-q)T)")
+    points: list[SurfacePointResponse]
+    filtered: FilterCountsResponse
+
+
+class VolSurfaceResponse(BaseModel):
+    ticker: str
+    spot: float
+    fetched_at: datetime
+    risk_free_rate: float = Field(description="Assumed r (decimal), a constant")
+    dividend_yield: float = Field(description="Assumed q (decimal), per ticker")
+    slices: list[ExpirySliceResponse]

@@ -24,6 +24,31 @@ function niceNum(range: number, round: boolean): number {
   return nice * 10 ** exp;
 }
 
+/** Linear-interpolated quantile of an UNSORTED numeric array (q in [0, 1]). */
+export function quantile(values: number[], q: number): number {
+  const xs = [...values].sort((a, b) => a - b);
+  if (xs.length === 0) return Number.NaN;
+  if (xs.length === 1) return xs[0];
+  const pos = (xs.length - 1) * q;
+  const lo = Math.floor(pos);
+  const hi = Math.ceil(pos);
+  if (lo === hi) return xs[lo];
+  return xs[lo] * (hi - pos) + xs[hi] * (pos - lo);
+}
+
+/** A data-driven viewing window holding the central (1 - 2*tail) fraction of the
+ *  values, e.g. tail=0.05 -> the [p5, p95] span. Adapts per ticker (a wide-vol
+ *  name keeps a wider window) and comes out asymmetric, which is correct for a
+ *  skewed distribution. Used to focus the charts on where the liquid quotes live
+ *  without discarding the tail data, which stays one expand-toggle away. */
+export function centralWindow(
+  values: number[],
+  tail = 0.05,
+): [number, number] {
+  if (values.length === 0) return [0, 0];
+  return [quantile(values, tail), quantile(values, 1 - tail)];
+}
+
 /** A y-domain that always includes zero, padded, so no curve sits against an
  *  exaggerating, truncated baseline. */
 export function zeroAnchoredDomain(values: number[]): [number, number] {

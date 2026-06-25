@@ -11,14 +11,17 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from data.cache import CachingChainProvider
 from data.chain import ExpiryChain, OptionChain, OptionQuote
 from data.provider import (
+    RISK_FREE_RATE,
     SUPPORTED_TICKERS,
     ChainError,
     ChainFetchError,
     ChainProvider,
     EmptyChainError,
     UnsupportedTickerError,
+    dividend_yield_for,
 )
 from data.yfinance_provider import YFinanceProvider
 
@@ -32,6 +35,8 @@ __all__ = [
     "EmptyChainError",
     "UnsupportedTickerError",
     "SUPPORTED_TICKERS",
+    "RISK_FREE_RATE",
+    "dividend_yield_for",
     "get_option_chain",
     "get_chain_provider",
 ]
@@ -40,8 +45,9 @@ __all__ = [
 @lru_cache(maxsize=1)
 def get_chain_provider() -> ChainProvider:
     """The default provider. A FastAPI dependency so tests can override it with
-    a fake (no network). Cached so the provider is built once."""
-    return YFinanceProvider()
+    a fake (no network). Cached so the provider is built once. Wrapped in a TTL
+    cache so the chain and vol-surface endpoints don't re-hit the source."""
+    return CachingChainProvider(YFinanceProvider())
 
 
 def get_option_chain(ticker: str, provider: ChainProvider | None = None) -> OptionChain:

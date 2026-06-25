@@ -156,6 +156,46 @@ export interface TickersResponse {
   tickers: string[];
 }
 
+// --- volatility surface (mirrors backend/api/schemas.py VolSurfaceResponse,
+//     which in turn mirrors pricing/vol_surface.py dataclasses) ---
+export interface SurfacePoint {
+  option_type: OptionType;
+  strike: number;
+  log_moneyness: number; // k = ln(K / F), forward moneyness
+  time_to_expiry: number; // years
+  implied_volatility: number; // BSM IV (decimal), from our solver
+  mid_price: number;
+  open_interest: number;
+  relative_spread: number;
+}
+
+export interface FilterCounts {
+  candidates: number;
+  retained: number;
+  no_two_sided_quote: number;
+  spread_too_wide: number;
+  insufficient_open_interest: number;
+  stale_quote: number;
+  solver_failed: number;
+}
+
+export interface ExpirySlice {
+  expiry: string; // ISO date
+  time_to_expiry: number; // years
+  forward: number; // F = S * e^((r - q)T)
+  points: SurfacePoint[];
+  filtered: FilterCounts;
+}
+
+export interface VolSurface {
+  ticker: string;
+  spot: number;
+  fetched_at: string; // ISO datetime
+  risk_free_rate: number; // decimal
+  dividend_yield: number; // decimal
+  slices: ExpirySlice[];
+}
+
 // --- error shape (FastAPI) ---
 export interface ApiErrorBody {
   detail: string | { msg: string }[];

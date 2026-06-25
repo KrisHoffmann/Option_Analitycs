@@ -33,6 +33,10 @@ class OptionQuote(BaseModel):
     open_interest: int | None = None
     implied_volatility: float | None = None  # provider's IV, decimal
     in_the_money: bool | None = None
+    # When this contract last printed a trade. Used as a staleness backstop in
+    # the vol-surface builder (a tight two-sided quote with real OI is already
+    # evidence of a live market). None when the provider omits it.
+    last_trade_date: datetime | None = None
 
 
 class ExpiryChain(BaseModel):

@@ -41,6 +41,30 @@ def test_roundtrip_recovers_volatility_and_price():
         assert repriced == pytest.approx(market, abs=1e-7)
 
 
+def test_roundtrip_with_dividend_yield_recovers_volatility():
+    # With a continuous dividend yield q > 0, pricing at sigma then inverting
+    # must still recover sigma -- q is threaded consistently into both the
+    # forward drift and the no-arbitrage bounds.
+    for option_type in ("call", "put"):
+        for strike in (90, 100, 110):
+            for q in (0.01, 0.03, 0.06):
+                market = price(option_type, 100, strike, 1.0, 0.05, 0.25, q)
+                iv = implied_volatility(option_type, market, 100, strike, 1.0,
+                                        0.05, q)
+                assert iv == pytest.approx(0.25, abs=1e-5)
+
+
+def test_dividend_yield_changes_the_implied_vol():
+    # Ignoring q when it is non-zero biases IV. A call priced WITH q, then
+    # inverted assuming q = 0, must not recover the true vol -- proving q is
+    # actually used rather than silently dropped.
+    market = price("call", 100, 100, 1.0, 0.05, 0.25, 0.05)
+    iv_with_q = implied_volatility("call", market, 100, 100, 1.0, 0.05, 0.05)
+    iv_without_q = implied_volatility("call", market, 100, 100, 1.0, 0.05, 0.0)
+    assert iv_with_q == pytest.approx(0.25, abs=1e-5)
+    assert abs(iv_without_q - 0.25) > 1e-3
+
+
 def test_reference_hull_price_implies_input_vol():
     # The Hull example (S=42,K=40,r=0.10,T=0.5) priced at sigma=0.20 must imply
     # 0.20 back out.

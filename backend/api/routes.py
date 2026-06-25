@@ -11,6 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from api.schemas import (
     ContractRequest,
+    ExpirySliceResponse,
+    FilterCountsResponse,
     GreeksResponse,
     ImpliedVolatilityRequest,
     ImpliedVolatilityResponse,
@@ -21,15 +23,19 @@ from api.schemas import (
     PriceResponse,
     SensitivityRequest,
     SensitivityResponse,
+    SurfacePointResponse,
     TickersResponse,
+    VolSurfaceResponse,
 )
 from data import (
+    RISK_FREE_RATE,
     SUPPORTED_TICKERS,
     ChainFetchError,
     ChainProvider,
     EmptyChainError,
     OptionChain,
     UnsupportedTickerError,
+    dividend_yield_for,
     get_chain_provider,
     get_option_chain,
 )
@@ -40,6 +46,7 @@ from pricing.implied_volatility import (
     implied_volatility,
 )
 from pricing.sensitivity import evenly_spaced, sensitivity_series
+from pricing.vol_surface import VolSurface, build_vol_surface
 from strategies.position import (
     Leg,
     Position,
@@ -194,3 +201,65 @@ def option_chain(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except ChainFetchError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+def _surface_response(surface: VolSurface) -> VolSurfaceResponse:
+    """Map the pure VolSurface result onto the wire schema (no math here)."""
+    return VolSurfaceResponse(
+        ticker=surface.ticker,
+        spot=surface.spot,
+        fetched_at=surface.fetched_at,
+        risk_free_rate=surface.risk_free_rate,
+        dividend_yield=surface.dividend_yield,
+        slices=[
+            ExpirySliceResponse(
+                expiry=s.expiry,
+                time_to_expiry=s.time_to_expiry,
+                forward=s.forward,
+                points=[
+                    SurfacePointResponse(
+                        option_type=p.option_type,
+                        strike=p.strike,
+                        log_moneyness=p.log_moneyness,
+                        time_to_expiry=p.time_to_expiry,
+                        implied_volatility=p.implied_volatility,
+                        mid_price=p.mid_price,
+                        open_interest=p.open_interest,
+                        relative_spread=p.relative_spread,
+                    )
+                    for p in s.points
+                ],
+                filtered=FilterCountsResponse(**vars(s.filtered)),
+            )
+            for s in surface.slices
+        ],
+    )
+
+
+@router.get("/vol-surface/{ticker}", response_model=VolSurfaceResponse)
+def vol_surface(
+    ticker: str,
+    provider: ChainProvider = Depends(get_chain_provider),
+) -> VolSurfaceResponse:
+    """Build the implied-volatility surface for a supported ticker.
+
+    Fetches the chain through the data adapter, then runs the pure surface
+    builder under stated BSM assumptions (European IV fit to American OTM
+    prices; r a constant, q per ticker). Returns a (forward log-moneyness, T,
+    IV) cloud with explicit gaps -- filtered/un-invertible strikes are simply
+    absent, never interpolated. Error mapping mirrors /chain.
+    """
+    try:
+        chain = get_option_chain(ticker, provider=provider)
+        surface = build_vol_surface(
+            chain,
+            risk_free_rate=RISK_FREE_RATE,
+            dividend_yield=dividend_yield_for(chain.ticker),
+        )
+    except UnsupportedTickerError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except EmptyChainError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except ChainFetchError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return _surface_response(surface)

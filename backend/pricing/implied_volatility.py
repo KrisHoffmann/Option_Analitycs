@@ -1,6 +1,7 @@
 """Implied-volatility solver: back out the volatility that reprices a European
 option to an observed market price, under the same BSM assumptions as
-``black_scholes`` (European exercise, constant rate, no dividends).
+``black_scholes`` (European exercise, constant rate, Merton continuous dividend
+yield ``q``).
 
 Method (stated here and in the README, per docs/finance-standards.md):
 
@@ -49,28 +50,31 @@ class ImpliedVolatilityError(ValueError):
 
 
 def _no_arbitrage_bounds(option_type: OptionType, spot: float, strike: float,
-                         time_to_expiry: float, risk_free_rate: float
-                         ) -> tuple[float, float]:
+                         time_to_expiry: float, risk_free_rate: float,
+                         dividend_yield: float) -> tuple[float, float]:
     """(intrinsic lower bound, upper bound) on a European option's price.
 
     Below the lower bound or above the upper bound there is no volatility that
-    reproduces the price, so the request is rejected.
+    reproduces the price, so the request is rejected. With a continuous dividend
+    yield ``q`` the spot is dividend-discounted (S·e^{-qT}) in both bounds.
     """
+    dividend_spot = spot * math.exp(-dividend_yield * time_to_expiry)
     discounted_strike = strike * math.exp(-risk_free_rate * time_to_expiry)
     if option_type == "call":
-        # max(S - K e^{-rT}, 0) <= C <= S
-        lower = max(spot - discounted_strike, 0.0)
-        upper = spot
+        # max(S e^{-qT} - K e^{-rT}, 0) <= C <= S e^{-qT}
+        lower = max(dividend_spot - discounted_strike, 0.0)
+        upper = dividend_spot
     else:
-        # max(K e^{-rT} - S, 0) <= P <= K e^{-rT}
-        lower = max(discounted_strike - spot, 0.0)
+        # max(K e^{-rT} - S e^{-qT}, 0) <= P <= K e^{-rT}
+        lower = max(discounted_strike - dividend_spot, 0.0)
         upper = discounted_strike
     return lower, upper
 
 
 def implied_volatility(option_type: OptionType, market_price: float, spot: float,
                        strike: float, time_to_expiry: float,
-                       risk_free_rate: float) -> float:
+                       risk_free_rate: float, dividend_yield: float = 0.0
+                       ) -> float:
     """Solve for the BSM implied volatility that reprices to ``market_price``.
 
     Args:
@@ -79,6 +83,8 @@ def implied_volatility(option_type: OptionType, market_price: float, spot: float
         spot, strike: > 0.
         time_to_expiry: years, > 0 (a fully expired option has no IV).
         risk_free_rate: annual, continuously compounded, decimal.
+        dividend_yield: continuous dividend yield q (decimal); default 0
+            reproduces the original no-dividend BSM exactly.
 
     Returns:
         Implied volatility as a decimal (e.g. 0.23 for 23%).
@@ -97,7 +103,7 @@ def implied_volatility(option_type: OptionType, market_price: float, spot: float
             f"market_price must be > 0, got {market_price}")
 
     lower_bound, upper_bound = _no_arbitrage_bounds(
-        option_type, spot, strike, time_to_expiry, risk_free_rate)
+        option_type, spot, strike, time_to_expiry, risk_free_rate, dividend_yield)
     # A tiny tolerance lets a price sitting exactly on intrinsic resolve to ~0
     # vol instead of being rejected by floating-point noise.
     if market_price < lower_bound - _PRICE_TOL:
@@ -116,10 +122,10 @@ def implied_volatility(option_type: OptionType, market_price: float, spot: float
 
     def objective(vol: float) -> float:
         return price(option_type, spot, strike, time_to_expiry,
-                     risk_free_rate, vol) - market_price
+                     risk_free_rate, vol, dividend_yield) - market_price
 
     newton = _try_newton(option_type, market_price, spot, strike,
-                         time_to_expiry, risk_free_rate)
+                         time_to_expiry, risk_free_rate, dividend_yield)
     if newton is not None:
         return newton
 
@@ -139,8 +145,8 @@ def implied_volatility(option_type: OptionType, market_price: float, spot: float
 
 
 def _try_newton(option_type: OptionType, market_price: float, spot: float,
-                strike: float, time_to_expiry: float, risk_free_rate: float
-                ) -> float | None:
+                strike: float, time_to_expiry: float, risk_free_rate: float,
+                dividend_yield: float) -> float | None:
     """One Newton-Raphson attempt. Returns the IV, or None if it fails to
     converge cleanly (so the caller can fall back to Brent).
 
@@ -153,7 +159,7 @@ def _try_newton(option_type: OptionType, market_price: float, spot: float,
 
     for _ in range(_MAX_NEWTON_ITERS):
         result = price_and_greeks(option_type, spot, strike, time_to_expiry,
-                                  risk_free_rate, vol)
+                                  risk_free_rate, vol, dividend_yield)
         diff = result.price - market_price
         if abs(diff) < _PRICE_TOL:
             return vol

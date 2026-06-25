@@ -211,6 +211,32 @@ A model is a lens, not the truth. Where this tool is weak:
   stated assumptions and your chosen inputs*. Disagreement with the market usually
   says more about the assumptions (or the data) than about a mispricing.
 
+### The volatility surface specifically
+
+The `/surface` view builds an implied-vol surface from market quotes. It is the most
+data-quality-sensitive part of the tool, so its assumptions are worth stating plainly:
+
+- **European IV fit to American prices.** Our IV solver is European BSM, but these
+  underlyings list American options. We build the surface from the **OTM wing only**
+  (OTM puts below spot, OTM calls above), where early-exercise premium is negligible —
+  so the European-vs-American error is concentrated in the ITM contracts we *exclude*.
+- **Yahoo's bid/ask can itself be delayed or stale** — it is not a real-time feed.
+  This is independent of a contract's last-trade date, so a "fresh" quote can still lag
+  the true market. We do not imply more data quality than the source provides.
+- **`q` is a continuous-yield approximation** of the discrete, quarterly dividends real
+  stocks pay (standard practice, but an approximation), sourced per ticker as a
+  documented constant; the risk-free rate `r` is likewise a single documented constant.
+- **We solve IV ourselves** and deliberately ignore the provider's own quoted
+  `impliedVolatility` field — consistent with the backend owning all numerics.
+- **The put→call crossover at the money** can leave a small cosmetic kink in the smile
+  (mid-quote noise plus the European/American asymmetry); it is noted, not engineered
+  away.
+- **Gaps are shown, never filled.** Strikes that fail the liquidity filters or cannot
+  be inverted are simply absent — no interpolation or parametric (e.g. SVI) fit, which
+  could introduce arbitrage. An honest gappy surface beats a smooth fabricated one. The
+  smile it reveals is itself the evidence that BSM's constant-vol assumption fails in
+  practice.
+
 ---
 
 ## Architecture

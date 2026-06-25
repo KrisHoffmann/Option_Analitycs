@@ -18,6 +18,32 @@ SUPPORTED_TICKERS: tuple[str, ...] = (
     "AAPL", "MSFT", "NVDA", "AMZN", "SPY", "QQQ", "TSLA",
 )
 
+# Market assumptions for IV work (the vol surface). These are documented
+# constants, not a live feed -- finance-standards.md blesses a hardcoded rate
+# "just say so". Refresh manually.
+#
+# r: ~3-month US T-bill yield, mid-2026. IV is weakly sensitive to r for the
+#    short-dated OTM options the surface is built from, so one constant suffices.
+RISK_FREE_RATE: float = 0.043
+
+# q per ticker: approximate trailing continuous dividend yields (a continuous
+# approximation of discrete quarterly dividends). 0.0 for non-payers.
+_DIVIDEND_YIELDS: dict[str, float] = {
+    "AAPL": 0.004,
+    "MSFT": 0.007,
+    "NVDA": 0.0003,
+    "AMZN": 0.0,
+    "SPY": 0.012,
+    "QQQ": 0.006,
+    "TSLA": 0.0,
+}
+
+
+def dividend_yield_for(ticker: str) -> float:
+    """Assumed continuous dividend yield q (decimal) for a supported ticker;
+    0.0 for anything not in the table."""
+    return _DIVIDEND_YIELDS.get(ticker.strip().upper(), 0.0)
+
 
 class ChainError(Exception):
     """Base class for data-layer failures."""
