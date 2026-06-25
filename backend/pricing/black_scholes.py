@@ -46,9 +46,32 @@ import math
 from dataclasses import dataclass
 from typing import Literal
 
-from scipy.stats import norm
-
 OptionType = Literal["call", "put"]
+
+# Standard normal CDF / PDF, in closed form. We deliberately do NOT use
+# scipy.stats.norm here: its .cdf/.pdf carry heavy per-call overhead (the
+# rv_continuous machinery), and this is the hot path -- the IV solver evaluates
+# it thousands of times per surface. These scalar forms are ~100x faster per
+# call and numerically identical to scipy to full double precision.
+_INV_SQRT2 = 1.0 / math.sqrt(2.0)
+_INV_SQRT_2PI = 1.0 / math.sqrt(2.0 * math.pi)
+
+
+def _norm_cdf(x: float) -> float:
+    """Standard normal CDF Phi(x) = 0.5 * erfc(-x / sqrt(2)).
+
+    The erfc form (not 0.5*(1 + erf(x/sqrt2))) is used on purpose: for large
+    negative x -- our deep-OTM puts, where precision is already worst -- the
+    1+erf form catastrophically cancels (1 + (a number near -1)), losing
+    significant digits in the tail. erfc evaluates the small tail probability
+    directly and stays accurate to full double precision across the range.
+    """
+    return 0.5 * math.erfc(-x * _INV_SQRT2)
+
+
+def _norm_pdf(x: float) -> float:
+    """Standard normal density phi(x) = exp(-x^2 / 2) / sqrt(2*pi)."""
+    return _INV_SQRT_2PI * math.exp(-0.5 * x * x)
 
 
 @dataclass(frozen=True)
@@ -176,32 +199,32 @@ def price_and_greeks(option_type: OptionType, spot: float, strike: float,
                     dividend_yield)
     discount = math.exp(-risk_free_rate * time_to_expiry)
     div_disc = math.exp(-dividend_yield * time_to_expiry)
-    pdf_d1 = norm.pdf(d1)
+    pdf_d1 = _norm_pdf(d1)
     root_t = math.sqrt(time_to_expiry)
 
     # Gamma and vega are identical for calls and puts; price/delta/theta/rho are
-    # not. norm.cdf is the standard normal CDF (Phi); norm.pdf is its density.
+    # not. _norm_cdf is the standard normal CDF (Phi); _norm_pdf is its density.
     gamma = div_disc * pdf_d1 / (spot * volatility * root_t)
     vega = spot * div_disc * pdf_d1 * root_t
 
     if option_type == "call":
-        price = spot * div_disc * norm.cdf(d1) - strike * discount * norm.cdf(d2)
-        delta = div_disc * norm.cdf(d1)
+        price = spot * div_disc * _norm_cdf(d1) - strike * discount * _norm_cdf(d2)
+        delta = div_disc * _norm_cdf(d1)
         theta = (
             -(spot * div_disc * pdf_d1 * volatility) / (2.0 * root_t)
-            + dividend_yield * spot * div_disc * norm.cdf(d1)
-            - risk_free_rate * strike * discount * norm.cdf(d2)
+            + dividend_yield * spot * div_disc * _norm_cdf(d1)
+            - risk_free_rate * strike * discount * _norm_cdf(d2)
         )
-        rho = strike * time_to_expiry * discount * norm.cdf(d2)
+        rho = strike * time_to_expiry * discount * _norm_cdf(d2)
     else:
-        price = strike * discount * norm.cdf(-d2) - spot * div_disc * norm.cdf(-d1)
-        delta = div_disc * (norm.cdf(d1) - 1.0)
+        price = strike * discount * _norm_cdf(-d2) - spot * div_disc * _norm_cdf(-d1)
+        delta = div_disc * (_norm_cdf(d1) - 1.0)
         theta = (
             -(spot * div_disc * pdf_d1 * volatility) / (2.0 * root_t)
-            - dividend_yield * spot * div_disc * norm.cdf(-d1)
-            + risk_free_rate * strike * discount * norm.cdf(-d2)
+            - dividend_yield * spot * div_disc * _norm_cdf(-d1)
+            + risk_free_rate * strike * discount * _norm_cdf(-d2)
         )
-        rho = -strike * time_to_expiry * discount * norm.cdf(-d2)
+        rho = -strike * time_to_expiry * discount * _norm_cdf(-d2)
 
     return BlackScholesResult(price=price, delta=delta, gamma=gamma,
                               theta=theta, vega=vega, rho=rho)
