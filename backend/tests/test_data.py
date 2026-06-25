@@ -8,6 +8,8 @@ source.
 """
 
 import sys
+import threading
+import time
 import types
 from datetime import UTC, date, datetime, timedelta
 
@@ -196,6 +198,48 @@ def test_get_option_chain_all_expiries_fail_raises_fetch_error(monkeypatch):
 
     with pytest.raises(ChainFetchError):
         YFinanceProvider().get_option_chain("AAPL")
+
+
+class _ConcurrentFakeHandle(_FakeHandle):
+    """Fake handle that (a) records how many option_chain calls overlap, proving
+    the fetch is actually concurrent, and (b) can fail chosen expiries -- so one
+    failing future is exercised against real parallel execution, not a stub."""
+
+    def __init__(self, options: list[str], fail: set[str] | None = None) -> None:
+        super().__init__(options, fail)
+        self._active = 0
+        self._max_active = 0
+        self._guard = threading.Lock()
+
+    def option_chain(self, expiry: str) -> _FakeTable:
+        with self._guard:
+            self._active += 1
+            self._max_active = max(self._max_active, self._active)
+        try:
+            time.sleep(0.05)  # widen the overlap window so the count is stable
+            return super().option_chain(expiry)
+        finally:
+            with self._guard:
+                self._active -= 1
+
+
+def test_get_option_chain_partial_tolerance_under_concurrency(monkeypatch):
+    # The regression that only surfaces when an expiry actually fails: with the
+    # fetch parallelized, a single future raising must NOT propagate out of
+    # future.result() and sink the batch. Every surviving expiry still returns,
+    # and the run is genuinely concurrent (max overlap > 1).
+    exps = _future_expiries(7, 30, 60, 90, 180, 365)
+    handle = _ConcurrentFakeHandle(exps, fail={exps[2], exps[4]})  # 60d, 180d die
+    _install_fake_yfinance(monkeypatch, handle)
+
+    chain = YFinanceProvider(fetch_workers=3).get_option_chain("AAPL")
+
+    got = {e.expiry.isoformat() for e in chain.expiries}
+    assert got == {exps[0], exps[1], exps[3], exps[5]}  # both failures dropped
+    # Survivors stay in sampled date order despite out-of-order completion.
+    assert [e.expiry.isoformat() for e in chain.expiries] == [
+        exps[0], exps[1], exps[3], exps[5]]
+    assert handle._max_active > 1  # the fetch really ran in parallel
 
 
 # ---------------------------------------------------------------------------

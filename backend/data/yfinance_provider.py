@@ -15,6 +15,7 @@ network call or even yfinance installed.
 from __future__ import annotations
 
 import math
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, date, datetime
 from typing import Any
 
@@ -30,6 +31,13 @@ from data.provider import ChainFetchError, EmptyChainError
 MAX_EXPIRIES = 10
 _TARGET_TENOR_DAYS = (7, 30, 60, 90, 120, 180, 270, 365)
 _DAYS_PER_YEAR = 365.0
+
+# The per-expiry fetches are independent network round-trips, so we run a few at
+# once to cut cold-cache latency (sequentially this is ~1.5s x N expiries). Kept
+# deliberately low: yfinance rate-limits on instantaneous request density, and a
+# high fan-out is exactly what trips it. Tune this DOWN here -- one named knob --
+# if throttling reappears; it never needs to go above MAX_EXPIRIES.
+_FETCH_WORKERS = 3
 
 
 def _select_expiries(
@@ -154,8 +162,10 @@ def build_option_chain(
 class YFinanceProvider:
     """Fetches chains from yfinance and maps them to our OptionChain type."""
 
-    def __init__(self, max_expiries: int = MAX_EXPIRIES) -> None:
+    def __init__(self, max_expiries: int = MAX_EXPIRIES,
+                 fetch_workers: int = _FETCH_WORKERS) -> None:
         self.max_expiries = max_expiries
+        self.fetch_workers = fetch_workers
 
     def get_option_chain(self, ticker: str) -> OptionChain:
         try:
@@ -178,22 +188,35 @@ class YFinanceProvider:
             raise EmptyChainError(f"no expiries listed for {ticker}")
 
         # Per-expiry fetches are EACH a network round-trip, and yfinance commonly
-        # rate-limits partway through. Tolerate per-expiry failures: keep every
-        # expiry that succeeds and skip the ones that don't, so a partial fetch
-        # still yields a (smaller) surface rather than discarding good slices.
+        # rate-limits partway through. We run a bounded handful concurrently to
+        # cut cold-cache latency, but the partial-tolerance contract is unchanged:
+        # every expiry that succeeds is kept and the ones that fail are skipped,
+        # so a partial fetch still yields a (smaller) surface. The catch is
+        # PER-FUTURE -- one expiry raising must not let future.result() propagate
+        # and sink the whole batch. Results are reassembled in the sampled order,
+        # so concurrency never changes which slices come back or how they sort.
+        def _fetch_one(
+            expiry_string: str,
+        ) -> tuple[date, list[dict[str, Any]], list[dict[str, Any]]]:
+            table = handle.option_chain(expiry_string)
+            return (
+                date.fromisoformat(expiry_string),
+                table.calls.to_dict("records"),
+                table.puts.to_dict("records"),
+            )
+
         raw_expiries: list[
             tuple[date, list[dict[str, Any]], list[dict[str, Any]]]
         ] = []
-        for expiry_string in expiry_strings:
-            try:
-                table = handle.option_chain(expiry_string)
-                raw_expiries.append((
-                    date.fromisoformat(expiry_string),
-                    table.calls.to_dict("records"),
-                    table.puts.to_dict("records"),
-                ))
-            except Exception:  # noqa: BLE001 - one bad expiry must not sink the rest
-                continue
+        workers = max(1, min(self.fetch_workers, len(expiry_strings)))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            # List (not as_completed) so we reassemble in submission order.
+            futures = [pool.submit(_fetch_one, e) for e in expiry_strings]
+            for future in futures:
+                try:
+                    raw_expiries.append(future.result())
+                except Exception:  # noqa: BLE001 - one bad expiry must not sink the rest
+                    continue
 
         # Only a *complete* failure (every expiry errored) is an error response.
         if not raw_expiries:
