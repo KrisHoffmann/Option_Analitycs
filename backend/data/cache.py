@@ -16,8 +16,8 @@ from __future__ import annotations
 import threading
 import time
 
-from data.chain import OptionChain
-from data.provider import ChainProvider
+from data.chain import OptionChain, PriceHistory
+from data.provider import HISTORY_LOOKBACK_DAYS, ChainProvider
 
 # How long a fetched chain is served before re-fetching. Chains move slowly
 # relative to a page view; 10 minutes keeps data fresh while cutting load.
@@ -25,7 +25,8 @@ CACHE_TTL_SECONDS: float = 600.0
 
 
 class CachingChainProvider:
-    """Wraps a provider with a per-ticker TTL cache. Implements ChainProvider."""
+    """Wraps a provider with per-ticker TTL caches for both the chain and the
+    price history. Implements ChainProvider."""
 
     def __init__(self, inner: ChainProvider,
                  ttl_seconds: float = CACHE_TTL_SECONDS) -> None:
@@ -33,6 +34,7 @@ class CachingChainProvider:
         self._ttl = ttl_seconds
         self._lock = threading.Lock()
         self._cache: dict[str, tuple[float, OptionChain]] = {}
+        self._history_cache: dict[tuple[str, int], tuple[float, PriceHistory]] = {}
 
     def get_option_chain(self, ticker: str) -> OptionChain:
         now = time.monotonic()
@@ -46,3 +48,18 @@ class CachingChainProvider:
         with self._lock:
             self._cache[ticker] = (time.monotonic(), chain)
         return chain
+
+    def get_price_history(
+        self, ticker: str, lookback_days: int = HISTORY_LOOKBACK_DAYS,
+    ) -> PriceHistory:
+        key = (ticker, lookback_days)
+        now = time.monotonic()
+        with self._lock:
+            entry = self._history_cache.get(key)
+            if entry is not None and now - entry[0] < self._ttl:
+                return entry[1]
+        # Fetch outside the lock (see get_option_chain); failures are not cached.
+        history = self._inner.get_price_history(ticker, lookback_days)
+        with self._lock:
+            self._history_cache[key] = (time.monotonic(), history)
+        return history

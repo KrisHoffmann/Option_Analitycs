@@ -21,10 +21,12 @@ from api.schemas import (
     PriceComparisonRequest,
     PriceComparisonResponse,
     PriceResponse,
+    RealizedVolPointResponse,
     SensitivityRequest,
     SensitivityResponse,
     SurfacePointResponse,
     TickersResponse,
+    VolComparisonResponse,
     VolSurfaceResponse,
 )
 from data import (
@@ -38,6 +40,7 @@ from data import (
     dividend_yield_for,
     get_chain_provider,
     get_option_chain,
+    get_price_history,
 )
 from pricing.binomial import crr_price
 from pricing.black_scholes import price_and_greeks
@@ -46,6 +49,7 @@ from pricing.implied_volatility import (
     implied_volatility,
 )
 from pricing.sensitivity import evenly_spaced, sensitivity_series
+from pricing.vol_comparison import VolComparison, build_vol_comparison
 from pricing.vol_surface import VolSurface, build_vol_surface
 from strategies.position import (
     Leg,
@@ -263,3 +267,61 @@ def vol_surface(
     except ChainFetchError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return _surface_response(surface)
+
+
+def _vol_comparison_response(c: VolComparison) -> VolComparisonResponse:
+    """Map the pure VolComparison result onto the wire schema (no math here)."""
+    return VolComparisonResponse(
+        ticker=c.ticker,
+        spot=c.spot,
+        fetched_at=c.fetched_at,
+        risk_free_rate=c.risk_free_rate,
+        dividend_yield=c.dividend_yield,
+        realized_window_trading_days=c.realized_window_trading_days,
+        trading_days_per_year=c.trading_days_per_year,
+        realized=[
+            RealizedVolPointResponse(date=p.date, realized_vol=p.realized_vol)
+            for p in c.realized
+        ],
+        latest_realized_vol=c.latest_realized_vol,
+        implied_atm_vol=c.implied_atm_vol,
+        implied_expiry=c.implied_expiry,
+        implied_days_to_expiry=c.implied_days_to_expiry,
+        implied_time_to_expiry=c.implied_time_to_expiry,
+        forward=c.forward,
+        atm_method=c.atm_method,
+        vol_premium=c.vol_premium,
+        vol_premium_note=c.vol_premium_note,
+    )
+
+
+@router.get("/vol-comparison/{ticker}", response_model=VolComparisonResponse)
+def vol_comparison(
+    ticker: str,
+    provider: ChainProvider = Depends(get_chain_provider),
+) -> VolComparisonResponse:
+    """Compare forward-looking implied vol against backward-looking realized vol.
+
+    Fetches today's chain and ~12 months of daily closes through the data
+    adapter, then runs the pure comparison: a rolling close-to-close realized-vol
+    series (backward) and today's near-dated ATM-forward IV from our solver
+    (forward, a single observation -- there is no historical implied series). The
+    premium is the same-date spread; framing travels with it. Error mapping
+    mirrors /chain.
+    """
+    try:
+        chain = get_option_chain(ticker, provider=provider)
+        history = get_price_history(ticker, provider=provider)
+        comparison = build_vol_comparison(
+            chain,
+            history,
+            risk_free_rate=RISK_FREE_RATE,
+            dividend_yield=dividend_yield_for(chain.ticker),
+        )
+    except UnsupportedTickerError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except EmptyChainError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except ChainFetchError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return _vol_comparison_response(comparison)

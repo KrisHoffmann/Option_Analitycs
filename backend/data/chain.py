@@ -56,3 +56,22 @@ class OptionChain(BaseModel):
     spot: float
     fetched_at: datetime
     expiries: list[ExpiryChain]
+
+
+class PricePoint(BaseModel):
+    """One trading day's closing price."""
+
+    date: date
+    close: float
+
+
+class PriceHistory(BaseModel):
+    """A ticker's daily closing prices over a lookback window, chronological.
+
+    The realized-volatility series (V2-B) is computed from these closes. Like the
+    chain, it carries a fetch timestamp because the source is free and delayed.
+    """
+
+    ticker: str
+    fetched_at: datetime
+    points: list[PricePoint]

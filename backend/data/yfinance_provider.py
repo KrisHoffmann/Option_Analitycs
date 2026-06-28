@@ -16,11 +16,17 @@ from __future__ import annotations
 
 import math
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from data.chain import ExpiryChain, OptionChain, OptionQuote
-from data.provider import ChainFetchError, EmptyChainError
+from data.chain import (
+    ExpiryChain,
+    OptionChain,
+    OptionQuote,
+    PriceHistory,
+    PricePoint,
+)
+from data.provider import HISTORY_LOOKBACK_DAYS, ChainFetchError, EmptyChainError
 
 # Cap on how many expiries we pull: each is a separate network round-trip, so we
 # bound the cold-cache fetch. We do NOT take the nearest N contiguous expiries --
@@ -159,6 +165,35 @@ def build_option_chain(
                        expiries=expiries)
 
 
+# Realized vol needs at least a couple of returns; below this the history is
+# unusable and we fail loudly rather than return a near-empty series.
+_MIN_HISTORY_POINTS = 3
+
+
+def build_price_history(
+    ticker: str,
+    fetched_at: datetime,
+    rows: list[tuple[date, float]],
+) -> PriceHistory:
+    """Assemble a PriceHistory from (date, close) rows (pure, no I/O).
+
+    Drops non-positive or NaN closes (the source occasionally emits them on
+    no-trade days), de-duplicates by date keeping the last close, and sorts
+    chronologically. Raises EmptyChainError if too little usable history remains.
+    """
+    by_date: dict[date, float] = {}
+    for day, close in rows:
+        if close is None or close != close or close <= 0:  # noqa: PLR0124 - NaN check
+            continue
+        by_date[day] = float(close)
+    points = [PricePoint(date=d, close=by_date[d]) for d in sorted(by_date)]
+    if len(points) < _MIN_HISTORY_POINTS:
+        raise EmptyChainError(
+            f"insufficient price history for {ticker} "
+            f"({len(points)} usable closes)")
+    return PriceHistory(ticker=ticker, fetched_at=fetched_at, points=points)
+
+
 class YFinanceProvider:
     """Fetches chains from yfinance and maps them to our OptionChain type."""
 
@@ -226,6 +261,37 @@ class YFinanceProvider:
 
         return build_option_chain(
             ticker, spot, datetime.now(UTC), raw_expiries)
+
+    def get_price_history(
+        self, ticker: str, lookback_days: int = HISTORY_LOOKBACK_DAYS,
+    ) -> PriceHistory:
+        try:
+            import yfinance  # lazy: keeps the dependency off the import path
+        except ImportError as exc:  # pragma: no cover - deploy-time config
+            raise ChainFetchError("yfinance is not installed") from exc
+
+        # One round-trip for ~12 months of daily closes. yfinance returns a
+        # DataFrame indexed by date with a "Close" column; we know that shape
+        # here (this is the only provider-aware module) and hand plain
+        # (date, close) rows to the pure builder.
+        try:
+            handle = yfinance.Ticker(ticker)
+            end = datetime.now(UTC).date()
+            start = end - timedelta(days=lookback_days)
+            frame = handle.history(
+                start=start.isoformat(),
+                end=(end + timedelta(days=1)).isoformat(),
+                interval="1d",
+            )
+            rows = [
+                (index.date(), float(close))
+                for index, close in frame["Close"].items()
+            ]
+        except Exception as exc:  # noqa: BLE001 - normalize any provider failure
+            raise ChainFetchError(
+                f"failed to fetch price history for {ticker}: {exc}") from exc
+
+        return build_price_history(ticker, datetime.now(UTC), rows)
 
     @staticmethod
     def _resolve_spot(handle: Any) -> float:

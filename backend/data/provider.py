@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from data.chain import OptionChain
+from data.chain import OptionChain, PriceHistory
 
 # A small whitelist of liquid underlyings. Restricting the set keeps the tool
 # focused, keeps payloads/latency sane, and avoids hammering a free data source
@@ -25,6 +25,11 @@ SUPPORTED_TICKERS: tuple[str, ...] = (
 # r: ~3-month US T-bill yield, mid-2026. IV is weakly sensitive to r for the
 #    short-dated OTM options the surface is built from, so one constant suffices.
 RISK_FREE_RATE: float = 0.043
+
+# Lookback for the realized-volatility history (V2-B). ~12 months of calendar
+# days yields ~252 trading closes -- enough for a full year of a rolling 21-day
+# realized series with complete coverage.
+HISTORY_LOOKBACK_DAYS: int = 365
 
 # q per ticker: approximate trailing continuous dividend yields (a continuous
 # approximation of discrete quarterly dividends). 0.0 for non-payers.
@@ -62,7 +67,13 @@ class ChainFetchError(ChainError):
 
 
 class ChainProvider(Protocol):
-    """Anything that can return one of our normalized chains for a ticker."""
+    """Our single data boundary: anything that can return a normalized option
+    chain and a daily price history for a ticker."""
 
     def get_option_chain(self, ticker: str) -> OptionChain:
+        ...
+
+    def get_price_history(
+        self, ticker: str, lookback_days: int = HISTORY_LOOKBACK_DAYS,
+    ) -> PriceHistory:
         ...

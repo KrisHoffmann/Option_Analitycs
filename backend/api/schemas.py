@@ -193,3 +193,50 @@ class VolSurfaceResponse(BaseModel):
     risk_free_rate: float = Field(description="Assumed r (decimal), a constant")
     dividend_yield: float = Field(description="Assumed q (decimal), per ticker")
     slices: list[ExpirySliceResponse]
+
+
+# --------------------------------------------------------------------------
+# Implied vs realized volatility (V2-B)
+# --------------------------------------------------------------------------
+# Mirrors pricing.vol_comparison. The asymmetry is intentional: `realized` is a
+# full backward-looking series; the implied_* fields are a single forward-looking
+# observation (today's near-dated ATM-forward IV). There is no historical implied
+# series -- a free source gives no option-quote history and v1 stores none -- so
+# we never fabricate one. `vol_premium` is the same-date spread, and
+# `vol_premium_note` is the mandatory framing that ships with it (shown on the
+# chart, not just the README).
+class RealizedVolPointResponse(BaseModel):
+    date: date
+    realized_vol: float = Field(description="Annualized realized vol (decimal)")
+
+
+class VolComparisonResponse(BaseModel):
+    ticker: str
+    spot: float
+    fetched_at: datetime
+    risk_free_rate: float = Field(description="Assumed r (decimal), a constant")
+    dividend_yield: float = Field(description="Assumed q (decimal), per ticker")
+
+    realized_window_trading_days: int = Field(
+        description="Trailing window for realized vol (trading days)")
+    trading_days_per_year: int = Field(
+        description="Annualization factor's argument (252)")
+    realized: list[RealizedVolPointResponse] = Field(
+        description="Backward-looking realized-vol series, chronological")
+    latest_realized_vol: float | None = Field(
+        description="Most recent realized vol, the premium's backward leg")
+
+    implied_atm_vol: float | None = Field(
+        description="Forward-looking ATM-forward IV from our solver (decimal)")
+    implied_expiry: date | None = None
+    implied_days_to_expiry: int | None = Field(
+        default=None, description="Actual day count of the near-dated expiry used")
+    implied_time_to_expiry: float | None = None
+    forward: float | None = Field(default=None, description="F = S*e^((r-q)T)")
+    atm_method: str | None = Field(
+        default=None, description="'interpolated' or 'nearest-strike'")
+
+    vol_premium: float | None = Field(
+        description="Same-date spread: implied_atm_vol - latest_realized_vol")
+    vol_premium_note: str = Field(
+        description="Mandatory framing for the premium; render it on the chart")
