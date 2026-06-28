@@ -16,6 +16,7 @@ import type {
   SensitivityRequest,
   SensitivityResponse,
   TickersResponse,
+  VolComparison,
   VolSurface,
 } from "./types";
 
@@ -140,4 +141,11 @@ export function fetchChain(ticker: string): Promise<OptionChain> {
 /** The implied-volatility surface (OTM-wing IV grid) for a supported ticker. */
 export function fetchVolSurface(ticker: string): Promise<VolSurface> {
   return getJson<VolSurface>(`/vol-surface/${encodeURIComponent(ticker)}`);
+}
+
+/** Forward implied vs backward realized volatility for a supported ticker. */
+export function fetchVolComparison(ticker: string): Promise<VolComparison> {
+  return getJson<VolComparison>(
+    `/vol-comparison/${encodeURIComponent(ticker)}`,
+  );
 }

@@ -196,6 +196,39 @@ export interface VolSurface {
   slices: ExpirySlice[];
 }
 
+// --- implied vs realized volatility (mirrors backend/api/schemas.py
+//     VolComparisonResponse, which mirrors pricing/vol_comparison.py) ---
+export interface RealizedVolPoint {
+  date: string; // ISO date
+  realized_vol: number; // annualized realized vol (decimal)
+}
+
+export interface VolComparison {
+  ticker: string;
+  spot: number;
+  fetched_at: string; // ISO datetime
+  risk_free_rate: number; // decimal
+  dividend_yield: number; // decimal
+
+  // Backward-looking series.
+  realized_window_trading_days: number;
+  trading_days_per_year: number;
+  realized: RealizedVolPoint[];
+  latest_realized_vol: number | null;
+
+  // Forward-looking single observation (today's near-dated ATM-forward IV).
+  implied_atm_vol: number | null;
+  implied_expiry: string | null; // ISO date
+  implied_days_to_expiry: number | null;
+  implied_time_to_expiry: number | null;
+  forward: number | null;
+  atm_method: string | null; // "interpolated" | "nearest-strike"
+
+  // Same-date spread and its mandatory framing.
+  vol_premium: number | null;
+  vol_premium_note: string;
+}
+
 // --- error shape (FastAPI) ---
 export interface ApiErrorBody {
   detail: string | { msg: string }[];

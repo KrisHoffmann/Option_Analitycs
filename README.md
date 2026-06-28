@@ -237,6 +237,37 @@ data-quality-sensitive part of the tool, so its assumptions are worth stating pl
   smile it reveals is itself the evidence that BSM's constant-vol assumption fails in
   practice.
 
+### Implied vs realized volatility specifically
+
+The `/vol-compare` view puts the market's **forward**-looking implied volatility next to
+the stock's **backward**-looking realized volatility. The comparison is easy to get
+subtly wrong, so the construction is stated plainly:
+
+- **Forward vs backward, shown as a same-date spread — not a forecast-vs-outcome
+  backtest.** Implied vol is the market's expectation over the option's remaining life;
+  realized vol is what the stock already did over a trailing window. We plot them
+  contemporaneously and define the "premium" as the same-date difference. The more
+  rigorous construction — each day's implied vol checked against the vol *subsequently*
+  realized over the period it was forecasting — needs a stored history of implied vols,
+  which a free source does not provide and this stateless tool does not keep. It is
+  named here as the deferred, more demanding version, not silently substituted.
+- **One implied observation, not a series.** Because only today's chain is available,
+  implied vol is a single forward point (today's ATM-forward IV, projected across the
+  option's life), never a fabricated historical line drawn back across the chart.
+- **Realized vol uses close-to-close log returns**, the textbook default: the annualized
+  standard deviation of daily log returns over a 21-trading-day window (about one
+  calendar month, to match the ~30-day implied horizon). Higher-frequency, **range-based
+  estimators — Parkinson and Garman-Klass — are lower-variance alternatives** that also
+  use the intraday high/low; they are **consciously not used here** for simplicity, since
+  close-to-close needs only closing prices and is the standard baseline.
+- **Annualized by √252 (trading days), not √365** — a common silent error that would
+  overstate the volatility.
+- **Implied vol is our own ATM-forward solve**, interpolated to `k = 0`, never the
+  provider's quoted `impliedVolatility` field — the same discipline as the surface.
+- **Not a signal.** An elevated implied-over-realized premium is a measure of how the
+  market is currently pricing volatility risk relative to recent history; it does not
+  predict future returns or direction.
+
 ---
 
 ## Architecture
@@ -249,7 +280,7 @@ backend/                      # Python + FastAPI; owns ALL numerics
   api/                        # thin FastAPI routes (parse / call / serialize)
   tests/                      # pytest; numerics validated against references
 frontend/                     # Next.js + TypeScript
-  app/                        # routes: / (payoff), /greeks, /chain
+  app/                        # routes: / (payoff), /greeks, /chain, /surface, /vol-compare
   components/                 # hand-rolled SVG charts + views
   lib/                        # API client, types mirrored to the Python schemas
 docs/                         # finance standards, architecture, conventions

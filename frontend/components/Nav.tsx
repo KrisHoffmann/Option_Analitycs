@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/greeks", label: "Greeks" },
   { href: "/chain", label: "Chain" },
   { href: "/surface", label: "Surface" },
+  { href: "/vol-compare", label: "IV vs RV" },
 ];
 
 export default function Nav() {

@@ -38,6 +38,14 @@ export const GLOSSARY = {
     term: "Implied volatility",
     body: "The volatility that makes the model's price match the option's market price — the market's expectation of how much the stock will move, read backwards out of the option's price. It matters because it is the one model input you can't observe directly, and comparing it across contracts shows where the market expects the most movement.",
   },
+  realizedVolatility: {
+    term: "Realized volatility",
+    body: "How much the stock actually moved over a trailing window, measured as the annualized standard deviation of its daily close-to-close log returns (here a 21-trading-day window, scaled by √252). It is backward-looking — what happened — in contrast to implied volatility, which is the market's forward-looking expectation read out of option prices.",
+  },
+  volRiskPremium: {
+    term: "Implied-over-realized spread",
+    body: "Today's at-the-money implied volatility minus the most recent realized volatility — a snapshot of how the market is currently pricing volatility relative to what the stock has lately done. It is a same-date difference between a forward measure and a backward one, not a forecast of future moves and not a trading signal.",
+  },
   modelPrice: {
     term: "Model price",
     body: "What the Black-Scholes-Merton model says the contract is worth given your inputs (spot, strike, time, rate, volatility). It is a value under stated assumptions, not a fair price — differences from the market usually reflect those assumptions or the data rather than a mispricing.",
