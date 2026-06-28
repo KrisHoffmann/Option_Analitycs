@@ -18,6 +18,8 @@ from api.schemas import (
     ImpliedVolatilityResponse,
     PositionRequest,
     PositionResponse,
+    PositionScenarioRequest,
+    PositionScenarioResponse,
     PriceComparisonRequest,
     PriceComparisonResponse,
     PriceResponse,
@@ -58,6 +60,7 @@ from strategies.position import (
     net_greeks,
     payoff_at_expiry,
 )
+from strategies.scenario import ScenarioMatrix, build_scenario_matrix
 
 router = APIRouter()
 
@@ -156,6 +159,57 @@ def evaluate_position(request: PositionRequest) -> PositionResponse:
                                     net.vega, net.rho),
         net_greeks_spot=request.spot,
     )
+
+
+def _scenario_response(matrix: ScenarioMatrix) -> PositionScenarioResponse:
+    """Map the pure ScenarioMatrix onto the wire schema (no math here)."""
+    return PositionScenarioResponse(
+        spot_shocks_pct=list(matrix.spot_shocks_pct),
+        vol_shocks_pp=list(matrix.vol_shocks_pp),
+        spot=matrix.spot,
+        base_volatility=matrix.base_volatility,
+        risk_free_rate=matrix.risk_free_rate,
+        dividend_yield=matrix.dividend_yield,
+        base_value=matrix.base_value,
+        base_row=matrix.base_row,
+        base_col=matrix.base_col,
+        values=[list(row) for row in matrix.values],
+        changes=[list(row) for row in matrix.changes],
+    )
+
+
+@router.post("/position-scenario", response_model=PositionScenarioResponse)
+def position_scenario(
+    request: PositionScenarioRequest,
+) -> PositionScenarioResponse:
+    """Reprice a position across a grid of spot and volatility shocks.
+
+    Returns the position's mark-to-market model value under each instantaneous
+    shock (spot multiplicative %, vol additive pp; time to expiry held fixed),
+    plus the change in model value from the no-shock base. This is risk analysis,
+    not P&L -- a value change is not a realized trade.
+    """
+    try:
+        legs = tuple(
+            Leg(leg.instrument, leg.quantity, leg.side, leg.strike,
+                leg.time_to_expiry)
+            for leg in request.legs
+        )
+        position = Position(legs=legs)
+        g = request.grid
+        matrix = build_scenario_matrix(
+            position, request.spot, request.risk_free_rate, request.volatility,
+            request.dividend_yield,
+            spot_shock_min_pct=g.spot_shock_min_pct,
+            spot_shock_max_pct=g.spot_shock_max_pct,
+            spot_steps=g.spot_steps,
+            vol_shock_min_pp=g.vol_shock_min_pp,
+            vol_shock_max_pp=g.vol_shock_max_pp,
+            vol_steps=g.vol_steps,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _scenario_response(matrix)
 
 
 @router.post("/sensitivity", response_model=SensitivityResponse)

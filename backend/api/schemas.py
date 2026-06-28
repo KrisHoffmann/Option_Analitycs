@@ -14,7 +14,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 OptionTypeField = Literal["call", "put"]
 InstrumentField = Literal["call", "put", "underlying"]
@@ -116,6 +116,57 @@ class PositionResponse(BaseModel):
     current_value: list[float]
     net_greeks: GreeksResponse
     net_greeks_spot: float = Field(description="Spot at which net_greeks was evaluated")
+
+
+# --------------------------------------------------------------------------
+# Scenario / risk matrix (V2-C)
+# --------------------------------------------------------------------------
+# Position model value under an instantaneous shock to spot (multiplicative %)
+# and volatility (additive percentage points). Cells are mark-to-market model
+# value, never P&L; `changes` is the change in model value from the no-shock base.
+class ShockGridSpec(BaseModel):
+    """The shock axes. Spot shocks are % of spot; vol shocks are pp of vol."""
+
+    spot_shock_min_pct: float = Field(default=-30.0, description="e.g. -30 = -30%")
+    spot_shock_max_pct: float = Field(default=30.0)
+    spot_steps: int = Field(default=13, ge=2, le=51)
+    vol_shock_min_pp: float = Field(
+        default=-10.0, description="percentage points of vol, e.g. -10 = -0.10")
+    vol_shock_max_pp: float = Field(default=10.0)
+    vol_steps: int = Field(default=9, ge=2, le=51)
+
+    @model_validator(mode="after")
+    def _ranges_ordered(self) -> ShockGridSpec:
+        if self.spot_shock_min_pct >= self.spot_shock_max_pct:
+            raise ValueError("spot_shock_min_pct must be < spot_shock_max_pct")
+        if self.vol_shock_min_pp >= self.vol_shock_max_pp:
+            raise ValueError("vol_shock_min_pp must be < vol_shock_max_pp")
+        return self
+
+
+class PositionScenarioRequest(BaseModel):
+    legs: list[LegSchema] = Field(min_length=1)
+    spot: float = Field(gt=0, description="Current underlying price S")
+    risk_free_rate: float = Field(default=0.0)
+    volatility: float = Field(ge=0, description="Base flat volatility sigma (dec.)")
+    dividend_yield: float = Field(default=0.0, description="Continuous yield q (dec.)")
+    grid: ShockGridSpec = Field(default_factory=ShockGridSpec)
+
+
+class PositionScenarioResponse(BaseModel):
+    spot_shocks_pct: list[float] = Field(description="Column axis: % spot shocks")
+    vol_shocks_pp: list[float] = Field(description="Row axis: pp vol shocks")
+    spot: float
+    base_volatility: float = Field(description="Volatility before any shock (dec.)")
+    risk_free_rate: float
+    dividend_yield: float
+    base_value: float = Field(description="Model value at no shock (0%, 0pp)")
+    base_row: int = Field(description="Row index nearest 0 pp vol shock")
+    base_col: int = Field(description="Column index nearest 0% spot shock")
+    values: list[list[float]] = Field(
+        description="Model value grid, [row=vol shock][col=spot shock]")
+    changes: list[list[float]] = Field(
+        description="Change in model value from base, same indexing as values")
 
 
 # --------------------------------------------------------------------------
