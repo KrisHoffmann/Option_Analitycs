@@ -64,6 +64,39 @@ export interface PositionResponse {
   net_greeks_spot: number;
 }
 
+// --- scenario / risk matrix (mirrors backend/api/schemas.py) ---
+export interface ShockGridSpec {
+  spot_shock_min_pct: number;
+  spot_shock_max_pct: number;
+  spot_steps: number;
+  vol_shock_min_pp: number;
+  vol_shock_max_pp: number;
+  vol_steps: number;
+}
+
+export interface PositionScenarioRequest {
+  legs: LegInput[];
+  spot: number;
+  risk_free_rate: number;
+  volatility: number;
+  dividend_yield?: number;
+  grid?: ShockGridSpec;
+}
+
+export interface PositionScenarioResponse {
+  spot_shocks_pct: number[]; // column axis
+  vol_shocks_pp: number[]; // row axis
+  spot: number;
+  base_volatility: number;
+  risk_free_rate: number;
+  dividend_yield: number;
+  base_value: number; // model value at no shock (0%, 0pp)
+  base_row: number;
+  base_col: number;
+  values: number[][]; // [row=vol shock][col=spot shock]
+  changes: number[][]; // value - base_value, same indexing
+}
+
 // --- Greek-sensitivity series ---
 export type SensitivityVariable =
   | "spot"

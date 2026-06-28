@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/chain", label: "Chain" },
   { href: "/surface", label: "Surface" },
   { href: "/vol-compare", label: "IV vs RV" },
+  { href: "/scenario", label: "Scenario" },
 ];
 
 export default function Nav() {

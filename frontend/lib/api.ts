@@ -10,6 +10,8 @@ import type {
   OptionChain,
   PositionRequest,
   PositionResponse,
+  PositionScenarioRequest,
+  PositionScenarioResponse,
   PriceComparisonRequest,
   PriceComparisonResponse,
   PriceResponse,
@@ -91,6 +93,16 @@ export function fetchPosition(
   request: PositionRequest,
 ): Promise<PositionResponse> {
   return postJson<PositionRequest, PositionResponse>("/position", request);
+}
+
+/** Position model value across a grid of spot and volatility shocks. */
+export function fetchPositionScenario(
+  request: PositionScenarioRequest,
+): Promise<PositionScenarioResponse> {
+  return postJson<PositionScenarioRequest, PositionScenarioResponse>(
+    "/position-scenario",
+    request,
+  );
 }
 
 /** Price + all five Greeks for a single contract (point values). */
