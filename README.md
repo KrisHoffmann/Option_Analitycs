@@ -1,8 +1,11 @@
 # Options Analytics & Research Platform
 
-A web tool for **pricing and risk-analysis of equity options** — Black-Scholes-Merton
-valuation, the Greeks, implied volatility, and multi-leg payoff curves. It is a
-quant-finance portfolio piece and a personal options-research tool.
+An options **pricing and risk-analysis** platform built on a validated
+Black-Scholes-Merton engine — 162 tests, every Greek checked against finite
+differences, implied volatility solved numerically with Newton-Raphson and a Brent
+fallback. Six analytical views, from multi-leg payoff curves to a live volatility
+surface. Built as a quant-finance portfolio piece and a personal options-research
+tool; deployed and usable now.
 
 **Live:**
 - Frontend (Vercel): https://option-analitycs.vercel.app
@@ -16,7 +19,7 @@ quant-finance portfolio piece and a personal options-research tool.
 
 ## What it does
 
-Three views, all driven by one Python pricing engine (the frontend never
+Six views, all driven by one Python pricing engine (the frontend never
 re-implements the math):
 
 1. **Payoff visualizer** — stack option legs (and stock) into a position and see
@@ -29,6 +32,25 @@ re-implements the math):
 3. **Chain + model-vs-market** — pull a real options chain for a liquid underlying,
    pick a contract, and put the model's price and implied volatility next to the
    market's bid/ask and quoted IV.
+4. **Volatility surface** (`/surface`) — implied volatility plotted across strikes
+   and expiries as a heatmap, showing the volatility smile and term structure that
+   BSM's constant-vol assumption cannot represent.
+5. **Implied vs realized volatility** (`/vol-compare`) — today's ATM implied vol
+   against a trailing 12-month realized vol curve, with the premium labeled and the
+   forward/backward asymmetry made visually explicit.
+6. **Scenario / risk matrix** (`/scenario`) — a position's mark-to-market model
+   value under a grid of simultaneous spot and volatility shocks, as a blue/amber
+   heatmap centered on the current position.
+
+---
+
+## Screenshots
+
+![Payoff visualizer](docs/screenshots/payoff.png)
+![Greeks visualizer with BSM-vs-binomial comparison](docs/screenshots/greeks.png)
+![Options chain, model vs market](docs/screenshots/chain.png)
+![Volatility surface](docs/screenshots/surface.png)
+![Scenario / risk matrix](docs/screenshots/scenario.png)
 
 ---
 
@@ -303,7 +325,7 @@ swapping it is a one-file change. The frontend never re-implements pricing.
 cd backend
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements-dev.txt
-pytest                                   # 75 tests
+pytest                                   # 162 tests
 uvicorn api.main:app --reload            # http://localhost:8000  (/docs for the API)
 ```
 
