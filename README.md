@@ -176,7 +176,7 @@ which the tests check against known results.
 
 Numerics are only trustworthy if you can *demonstrate* they're right. Every pricing
 output is checked against an independent reference
-(`backend/tests/`, run with `pytest` — 108 tests):
+(`backend/tests/`, run with `pytest` — 162 tests):
 
 - **Cited textbook value.** The BSM engine reproduces a worked example from John C.
   Hull, *Options, Futures, and Other Derivatives* (S=42, K=40, r=0.10, σ=0.20,
