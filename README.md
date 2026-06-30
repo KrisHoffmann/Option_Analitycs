@@ -49,7 +49,9 @@ re-implements the math):
 ![Payoff visualizer](docs/screenshots/payoff.png)
 ![Greeks visualizer with BSM-vs-binomial comparison](docs/screenshots/greeks.png)
 ![Options chain, model vs market](docs/screenshots/chain.png)
-![Volatility surface](docs/screenshots/surface.png)
+![Implied-volatility surface](docs/screenshots/surface.png)
+![Implied-volatility smile slices and per-expiry data-quality audit](docs/screenshots/surface-smile-slices.png)
+![Implied vs realized volatility](docs/screenshots/vol-compare.png)
 ![Scenario / risk matrix](docs/screenshots/scenario.png)
 
 ---
